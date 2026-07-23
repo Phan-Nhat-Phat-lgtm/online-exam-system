@@ -2,7 +2,6 @@ services:
   - type: web
     name: exam-backend
     runtime: python
-    repo: https://github.com/yourusername/online-exam-system
     plan: free
     region: singapore
     buildCommand: |
@@ -29,7 +28,6 @@ services:
   - type: web
     name: exam-frontend
     runtime: static
-    repo: https://github.com/yourusername/online-exam-system
     plan: free
     region: singapore
     buildCommand: |
