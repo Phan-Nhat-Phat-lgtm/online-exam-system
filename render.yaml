@@ -2,7 +2,6 @@ services:
   - type: web
     name: exam-backend
     runtime: python
-    plan: free
     buildCommand: |
       cd backend
       pip install -r requirements.txt
@@ -24,9 +23,9 @@ services:
       - key: RENDER
         value: "true"
 
-  - type: static
+  - type: web
     name: exam-frontend
-    plan: free
+    runtime: static
     buildCommand: |
       cd frontend
       npm install
@@ -40,4 +39,3 @@ databases:
   - name: exam-db
     databaseName: exam_db
     user: exam_user
-    plan: free
