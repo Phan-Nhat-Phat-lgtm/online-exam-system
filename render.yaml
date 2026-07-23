@@ -3,7 +3,6 @@ services:
     name: exam-backend
     runtime: python
     plan: free
-    region: singapore
     buildCommand: |
       cd backend
       pip install -r requirements.txt
@@ -43,4 +42,3 @@ databases:
     databaseName: exam_db
     user: exam_user
     plan: free
-    region: singapore
