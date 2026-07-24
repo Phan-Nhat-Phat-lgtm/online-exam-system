@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/axios';
 import toast from 'react-hot-toast';
@@ -13,13 +13,22 @@ import {
   CheckCircle2,
   Trash2,
   Edit,
-  X
+  X,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
+
+const PAGE_SIZE = 20;
 
 const Questions = () => {
   const queryClient = useQueryClient();
   const [selectedBank, setSelectedBank] = useState('');
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    setPage(1);
+  }, [selectedBank, search]);
 
   // Modals
   const [isQuestionModalOpen, setIsQuestionModalOpen] = useState(false);
@@ -50,15 +59,20 @@ const Questions = () => {
     }
   });
 
-  const { data: questions, isLoading } = useQuery({
-    queryKey: ['questions', selectedBank, search],
+  const { data: questionsData, isLoading } = useQuery({
+    queryKey: ['questions', selectedBank, search, page],
     queryFn: async () => {
-      let url = `/questions/?search=${search}`;
+      let url = `/questions/?page=${page}&search=${search}`;
       if (selectedBank) url += `&bank=${selectedBank}`;
       const res = await api.get(url);
-      return res.data.results || res.data;
-    }
+      return res.data;
+    },
+    keepPreviousData: true
   });
+
+  const questions = questionsData?.results || (Array.isArray(questionsData) ? questionsData : []);
+  const totalCount = questionsData?.count ?? questions.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   const saveMutation = useMutation({
     mutationFn: (data) => {
@@ -213,7 +227,7 @@ const Questions = () => {
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-3">
                   <span className="shrink-0 w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 font-extrabold text-sm flex items-center justify-center">
-                    #{idx + 1}
+                    #{(page - 1) * PAGE_SIZE + idx + 1}
                   </span>
                   <div>
                     <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
@@ -267,6 +281,39 @@ const Questions = () => {
           </div>
         )}
       </div>
+
+      {/* Pagination */}
+      {!isLoading && totalCount > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Hiển thị <span className="font-semibold text-slate-700 dark:text-slate-200">{(page - 1) * PAGE_SIZE + 1}</span>
+            {' '}–{' '}
+            <span className="font-semibold text-slate-700 dark:text-slate-200">{Math.min(page * PAGE_SIZE, totalCount)}</span>
+            {' '}trong tổng số <span className="font-semibold text-slate-700 dark:text-slate-200">{totalCount}</span> câu
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              className="btn-secondary py-2 px-3 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              <span>Trước</span>
+            </button>
+            <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 px-2">
+              Trang {page} / {totalPages}
+            </span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+              className="btn-secondary py-2 px-3 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <span>Sau</span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Manual Question Modal */}
       {isQuestionModalOpen && (
