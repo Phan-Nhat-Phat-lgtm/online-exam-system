@@ -112,7 +112,7 @@ class ExamViewSet(viewsets.ModelViewSet):
     ordering_fields = ['start_time', 'created_at']
 
     def get_permissions(self):
-        if self.action in ['list', 'retrieve']:
+        if self.action in ['list', 'retrieve', 'student_exams_list']:
             return [IsAuthenticated()]
         return [IsAuthenticated(), IsAdminUser()]
 
