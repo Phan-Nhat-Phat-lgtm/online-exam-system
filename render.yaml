@@ -2,6 +2,7 @@ services:
   - type: web
     name: exam-backend
     runtime: python
+    plan: free
     buildCommand: |
       cd backend
       pip install -r requirements.txt
@@ -31,6 +32,10 @@ services:
       npm install
       npm run build
     staticPublishPath: ./frontend/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
     envVars:
       - key: VITE_API_URL
         value: https://exam-backend.onrender.com/api
@@ -39,3 +44,4 @@ databases:
   - name: exam-db
     databaseName: exam_db
     user: exam_user
+    plan: free
