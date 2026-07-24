@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
+import Footer from './Footer';
 
 const Layout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -16,6 +17,8 @@ const Layout = () => {
         <main className="flex-1 p-4 lg:p-8 max-w-7xl w-full mx-auto">
           <Outlet />
         </main>
+
+        <Footer className="py-6 px-4 border-t border-slate-200 dark:border-slate-800" />
       </div>
     </div>
   );
