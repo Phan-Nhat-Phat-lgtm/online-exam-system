@@ -54,10 +54,10 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
           </div>
           <div>
             <h1 className="font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight text-lg">
-              EXAM PRO
+              NHATPHAT
             </h1>
             <p className="text-[11px] text-blue-600 dark:text-blue-400 font-semibold uppercase tracking-wider">
-              Ứng dụng CNTT
+              EXAMPRO
             </p>
           </div>
         </div>
