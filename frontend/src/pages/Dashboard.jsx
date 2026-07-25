@@ -25,7 +25,10 @@ const Dashboard = () => {
     }
   });
 
-  const isStudent = profile?.student_info && !profile?.is_admin;
+  // Ép isStudent thành boolean (true/false) để react-query `enabled` không bị
+  // `undefined` — react-query v4 ném "Expected enabled to be a boolean" nếu
+  // truyền undefined, gây trắng trang khi profile chưa load xong.
+  const isStudent = Boolean(profile?.student_info && !profile?.is_admin);
 
   // Admin dashboard stats
   const { data: stats, isLoading: statsLoading, error: statsError } = useQuery({
