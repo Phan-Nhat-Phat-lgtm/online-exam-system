@@ -3,7 +3,7 @@ import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import Layout from './Layout';
 
-const PrivateRoute = ({ adminOnly = false }) => {
+const PrivateRoute = ({ adminOnly = false, children }) => {
   const { isAuthenticated, isAdmin, loading } = useAuth();
 
   if (loading) {
@@ -25,7 +25,13 @@ const PrivateRoute = ({ adminOnly = false }) => {
     return <Navigate to="/student-exams" replace />;
   }
 
+  // If children are passed (e.g. fullscreen ExamTaking), render them directly without Layout
+  if (children) {
+    return children;
+  }
+
   return <Layout />;
 };
 
 export default PrivateRoute;
+
