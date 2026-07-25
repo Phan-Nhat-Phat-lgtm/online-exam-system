@@ -62,14 +62,20 @@ const Attendance = () => {
   };
 
   const isStudentAbsent = (studentId) => {
-    return attendances?.some(a => a.student === studentId && a.is_absent);
+    return Array.isArray(attendances) && attendances.some(a => a?.student === studentId && a?.is_absent);
   };
 
-  const filteredStudents = students?.filter(student =>
-    student.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    student.student_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    student.class_name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Guard: nếu API trả về null/undefined hoặc phần tử thiếu trường, không văng lỗi
+  const safeStudents = Array.isArray(students) ? students : [];
+  const q = searchQuery.toLowerCase();
+  const filteredStudents = q === ''
+    ? safeStudents
+    : safeStudents.filter((student) => {
+        const name = (student?.full_name || '').toLowerCase();
+        const sid = (student?.student_id || '').toLowerCase();
+        const cls = (student?.class_name || '').toLowerCase();
+        return name.includes(q) || sid.includes(q) || cls.includes(q);
+      });
 
   if (studentsLoading || attendancesLoading) {
     return (

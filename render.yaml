@@ -38,7 +38,7 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_URL
-        value: https://exam-backend.onrender.com/api
+        value: https://exam-backend-n1fc.onrender.com/api
 
 databases:
   - name: exam-db
