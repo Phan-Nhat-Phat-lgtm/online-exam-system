@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Student, QuestionBank, Question, Exam, StudentExam, StudentAnswer, Result
+from .models import Student, QuestionBank, Question, Exam, StudentExam, StudentAnswer, Result, Announcement, Attendance
 
 @admin.register(Student)
 class StudentAdmin(admin.ModelAdmin):
@@ -30,3 +30,15 @@ class StudentExamAdmin(admin.ModelAdmin):
 @admin.register(Result)
 class ResultAdmin(admin.ModelAdmin):
     list_display = ('student_exam', 'score', 'correct_count', 'total_questions', 'submitted_at')
+
+@admin.register(Announcement)
+class AnnouncementAdmin(admin.ModelAdmin):
+    list_display = ('title', 'is_active', 'created_by', 'created_at')
+    list_filter = ('is_active', 'created_at')
+    search_fields = ('title', 'content')
+
+@admin.register(Attendance)
+class AttendanceAdmin(admin.ModelAdmin):
+    list_display = ('student', 'date', 'is_absent', 'note', 'marked_by', 'created_at')
+    list_filter = ('is_absent', 'date')
+    search_fields = ('student__full_name', 'student__student_id')

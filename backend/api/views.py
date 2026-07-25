@@ -14,12 +14,14 @@ import openpyxl
 
 from .models import (
     Student, QuestionBank, Question, Exam,
-    StudentExam, StudentExamQuestion, StudentAnswer, Result
+    StudentExam, StudentExamQuestion, StudentAnswer, Result,
+    Announcement, Attendance
 )
 from .serializers import (
     StudentSerializer, QuestionBankSerializer, QuestionSerializer,
     ExamSerializer, StudentExamSerializer, StudentExamQuestionSerializer,
-    StudentAnswerSerializer, ResultSerializer, UserSerializer
+    StudentAnswerSerializer, ResultSerializer, UserSerializer,
+    AnnouncementSerializer, AttendanceSerializer
 )
 from .permissions import IsAdminUser, IsStudentUser
 from .importer import import_questions_from_file
@@ -415,4 +417,110 @@ class DashboardView(generics.GenericAPIView):
             'min_score': round(min_score, 2),
             'recent_exams': recent_data,
             'top_students': top_data,
+        })
+
+
+class AnnouncementViewSet(viewsets.ModelViewSet):
+    queryset = Announcement.objects.all()
+    serializer_class = AnnouncementSerializer
+    filter_backends = [SearchFilter, OrderingFilter]
+    search_fields = ['title', 'content']
+    ordering_fields = ['created_at']
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve', 'active_announcements']:
+            return [IsAuthenticated()]
+        return [IsAuthenticated(), IsAdminUser()]
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
+
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def active_announcements(self, request):
+        """Get active announcements for students"""
+        announcements = Announcement.objects.filter(is_active=True).order_by('-created_at')[:5]
+        serializer = self.get_serializer(announcements, many=True)
+        return Response(serializer.data)
+
+
+class AttendanceViewSet(viewsets.ModelViewSet):
+    queryset = Attendance.objects.all()
+    serializer_class = AttendanceSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['student', 'date', 'is_absent']
+    search_fields = ['student__full_name', 'student__student_id', 'student__class_name']
+    ordering_fields = ['date', 'created_at']
+
+    def get_permissions(self):
+        if self.action in ['my_attendance', 'my_attendance_summary']:
+            return [IsAuthenticated()]
+        return [IsAuthenticated(), IsAdminUser()]
+
+    def perform_create(self, serializer):
+        serializer.save(marked_by=self.request.user)
+
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def my_attendance(self, request):
+        """Get attendance records for current student"""
+        student = getattr(request.user, 'student_profile', None)
+        if not student:
+            return Response({'error': 'Người dùng không phải là học sinh'}, status=status.HTTP_403_FORBIDDEN)
+
+        attendances = Attendance.objects.filter(student=student).order_by('-date')
+        serializer = self.get_serializer(attendances, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def my_attendance_summary(self, request):
+        """Get attendance summary for current student"""
+        student = getattr(request.user, 'student_profile', None)
+        if not student:
+            return Response({'error': 'Người dùng không phải là học sinh'}, status=status.HTTP_403_FORBIDDEN)
+
+        total_days = Attendance.objects.filter(student=student).count()
+        absent_days = Attendance.objects.filter(student=student, is_absent=True).count()
+        present_days = total_days - absent_days
+
+        return Response({
+            'total_days': total_days,
+            'present_days': present_days,
+            'absent_days': absent_days,
+            'warning': absent_days >= 5
+        })
+
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated, IsAdminUser])
+    def mark_absent(self, request):
+        """Mark students as absent for a specific date"""
+        date = request.data.get('date')
+        student_ids = request.data.get('student_ids', [])
+        note = request.data.get('note', '')
+
+        if not date:
+            return Response({'error': 'Vui lòng chọn ngày điểm danh'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not student_ids:
+            return Response({'error': 'Vui lòng chọn học sinh vắng mặt'}, status=status.HTTP_400_BAD_REQUEST)
+
+        created_count = 0
+        for student_id in student_ids:
+            try:
+                student = Student.objects.get(id=student_id)
+                attendance, created = Attendance.objects.update_or_create(
+                    student=student,
+                    date=date,
+                    defaults={
+                        'is_absent': True,
+                        'note': note,
+                        'marked_by': request.user
+                    }
+                )
+                if created:
+                    created_count += 1
+            except Student.DoesNotExist:
+                continue
+
+        return Response({
+            'message': f'Đã điểm danh vắng {created_count} học sinh',
+            'created_count': created_count
         })

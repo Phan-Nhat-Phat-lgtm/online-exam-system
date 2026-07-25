@@ -56,7 +56,7 @@ const Login = () => {
               Tên đăng nhập / MSSV
             </label>
             <div className="relative">
-              <User className="w-5 h-5 absolute left-3.5 top-3 text-slate-400" />
+              <User className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
               <input
                 type="text"
                 value={username}
@@ -73,7 +73,7 @@ const Login = () => {
               Mật khẩu
             </label>
             <div className="relative">
-              <KeyRound className="w-5 h-5 absolute left-3.5 top-3 text-slate-400" />
+              <KeyRound className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
               <input
                 type="password"
                 value={password}

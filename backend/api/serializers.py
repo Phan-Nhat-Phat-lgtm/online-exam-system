@@ -2,7 +2,8 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import (
     Student, QuestionBank, Question, Exam,
-    StudentExam, StudentExamQuestion, StudentAnswer, Result
+    StudentExam, StudentExamQuestion, StudentAnswer, Result,
+    Announcement, Attendance
 )
 
 class UserSerializer(serializers.ModelSerializer):
@@ -138,3 +139,27 @@ class ResultSerializer(serializers.ModelSerializer):
             'exam_name', 'score', 'correct_count', 'incorrect_count',
             'total_questions', 'time_spent', 'submitted_at'
         ]
+
+
+class AnnouncementSerializer(serializers.ModelSerializer):
+    created_by_name = serializers.CharField(source='created_by.username', read_only=True)
+
+    class Meta:
+        model = Announcement
+        fields = ['id', 'title', 'content', 'is_active', 'created_by_name', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_by_name', 'created_at', 'updated_at']
+
+
+class AttendanceSerializer(serializers.ModelSerializer):
+    student_name = serializers.CharField(source='student.full_name', read_only=True)
+    student_id = serializers.CharField(source='student.student_id', read_only=True)
+    class_name = serializers.CharField(source='student.class_name', read_only=True)
+    marked_by_name = serializers.CharField(source='marked_by.username', read_only=True)
+
+    class Meta:
+        model = Attendance
+        fields = [
+            'id', 'student', 'student_name', 'student_id', 'class_name',
+            'date', 'is_absent', 'note', 'marked_by_name', 'created_at'
+        ]
+        read_only_fields = ['id', 'marked_by_name', 'created_at']

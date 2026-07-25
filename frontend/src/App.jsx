@@ -14,6 +14,8 @@ import Exams from './pages/Exams';
 import StudentExams from './pages/StudentExams';
 import ExamTaking from './pages/ExamTaking';
 import Results from './pages/Results';
+import Announcements from './pages/Announcements';
+import Attendance from './pages/Attendance';
 import NotFound from './pages/NotFound';
 
 const queryClient = new QueryClient({
@@ -47,6 +49,8 @@ function App() {
               <Route path="/banks" element={<QuestionBanks />} />
               <Route path="/questions" element={<Questions />} />
               <Route path="/exams" element={<Exams />} />
+              <Route path="/announcements" element={<Announcements />} />
+              <Route path="/attendance" element={<Attendance />} />
             </Route>
 
             {/* Fullscreen Exam Taking route */}

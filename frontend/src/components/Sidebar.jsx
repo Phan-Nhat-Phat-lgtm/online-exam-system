@@ -10,7 +10,9 @@ import {
   Award,
   LogOut,
   Sparkles,
-  BookMarked
+  BookMarked,
+  Megaphone,
+  UserCheck
 } from 'lucide-react';
 
 const Sidebar = ({ isOpen, setIsOpen }) => {
@@ -22,10 +24,13 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     { path: '/banks', label: 'Ngân hàng Câu hỏi', icon: BookOpen },
     { path: '/questions', label: 'Quản lý Câu hỏi', icon: HelpCircle },
     { path: '/exams', label: 'Quản lý Kỳ thi', icon: FileSpreadsheet },
+    { path: '/announcements', label: 'Thông báo', icon: Megaphone },
+    { path: '/attendance', label: 'Điểm danh', icon: UserCheck },
     { path: '/results', label: 'Kết quả & Báo cáo', icon: Award },
   ];
 
   const studentNavs = [
+    { path: '/dashboard', label: 'Trang chủ', icon: LayoutDashboard },
     { path: '/student-exams', label: 'Danh sách Kỳ thi', icon: BookMarked },
     { path: '/results', label: 'Kết quả cá nhân', icon: Award },
   ];

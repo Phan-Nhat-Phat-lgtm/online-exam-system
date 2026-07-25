@@ -9,19 +9,56 @@ import {
   Award,
   TrendingUp,
   Clock,
-  UserCheck
+  UserCheck,
+  Megaphone,
+  Calendar,
+  AlertTriangle
 } from 'lucide-react';
 
 const Dashboard = () => {
-  const { data: stats, isLoading, error } = useQuery({
-    queryKey: ['dashboard-stats'],
+  // Get user profile first to check if student or admin
+  const { data: profile } = useQuery({
+    queryKey: ['user-profile'],
     queryFn: async () => {
-      const res = await api.get('/dashboard/');
+      const res = await api.get('/auth/me/');
       return res.data;
     }
   });
 
-  if (isLoading) {
+  const isStudent = profile?.student_info && !profile?.is_admin;
+
+  // Admin dashboard stats
+  const { data: stats, isLoading: statsLoading, error: statsError } = useQuery({
+    queryKey: ['dashboard-stats'],
+    queryFn: async () => {
+      const res = await api.get('/dashboard/');
+      return res.data;
+    },
+    enabled: !isStudent // Only load if admin
+  });
+
+  // Student announcements
+  const { data: announcements, isLoading: announcementsLoading } = useQuery({
+    queryKey: ['active-announcements'],
+    queryFn: async () => {
+      const res = await api.get('/announcements/active_announcements/');
+      return res.data;
+    },
+    enabled: isStudent // Only load if student
+  });
+
+  // Student attendance summary
+  const { data: attendanceSummary } = useQuery({
+    queryKey: ['my-attendance-summary'],
+    queryFn: async () => {
+      const res = await api.get('/attendances/my_attendance_summary/');
+      return res.data;
+    },
+    enabled: isStudent // Only load if student
+  });
+
+  // Loading state
+  if (statsLoading || announcementsLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
@@ -29,7 +66,107 @@ const Dashboard = () => {
     );
   }
 
-  if (error) {
+  // Student Dashboard
+  if (isStudent) {
+    return (
+      <div className="space-y-8">
+        {/* Header */}
+        <div>
+          <h1 className="text-2xl lg:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+            Chào mừng, {profile?.student_info?.full_name}!
+          </h1>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
+            MSSV: {profile?.student_info?.student_id} - Lớp: {profile?.student_info?.class_name}
+          </p>
+        </div>
+
+        {/* Attendance Warning */}
+        {attendanceSummary?.warning && (
+          <div className="glass-card p-6 bg-rose-50 dark:bg-rose-950/30 border-rose-300 dark:border-rose-800">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-xl bg-rose-100 dark:bg-rose-900/60 text-rose-600 dark:text-rose-400 flex items-center justify-center flex-shrink-0">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-bold text-rose-900 dark:text-rose-300 text-lg">
+                  ⚠️ Cảnh báo điểm danh
+                </h3>
+                <p className="text-rose-700 dark:text-rose-400 mt-2">
+                  Bạn đã nghỉ <span className="font-black text-xl">{attendanceSummary?.absent_days}</span> buổi. 
+                  {attendanceSummary?.absent_days >= 5 && (
+                    <span className="font-semibold"> Bạn không được nghỉ quá 5 buổi!</span>
+                  )}
+                </p>
+                <div className="mt-3 flex items-center gap-6 text-sm">
+                  <div>
+                    <span className="text-slate-600 dark:text-slate-400">Tổng buổi học:</span>
+                    <span className="ml-2 font-bold text-slate-900 dark:text-white">{attendanceSummary?.total_days}</span>
+                  </div>
+                  <div>
+                    <span className="text-emerald-600 dark:text-emerald-400">Có mặt:</span>
+                    <span className="ml-2 font-bold text-emerald-700 dark:text-emerald-300">{attendanceSummary?.present_days}</span>
+                  </div>
+                  <div>
+                    <span className="text-rose-600 dark:text-rose-400">Vắng:</span>
+                    <span className="ml-2 font-bold text-rose-700 dark:text-rose-300">{attendanceSummary?.absent_days}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Announcements */}
+        <div className="glass-card p-6 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+              <Megaphone className="w-5 h-5" />
+            </div>
+            <h2 className="font-bold text-slate-900 dark:text-white text-xl">
+              Thông báo từ Giảng viên
+            </h2>
+          </div>
+
+          <div className="space-y-3">
+            {announcements && announcements.length > 0 ? (
+              announcements.map((announcement) => (
+                <div
+                  key={announcement.id}
+                  className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-700 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1">
+                      <h3 className="font-bold text-slate-900 dark:text-white">
+                        {announcement.title}
+                      </h3>
+                      <p className="text-slate-600 dark:text-slate-300 mt-2 whitespace-pre-wrap">
+                        {announcement.content}
+                      </p>
+                    </div>
+                    <div className="text-xs text-slate-400 flex-shrink-0">
+                      {new Date(announcement.created_at).toLocaleDateString('vi-VN')}
+                    </div>
+                  </div>
+                  <div className="mt-3 text-xs text-slate-400">
+                    <Calendar className="w-3 h-3 inline mr-1" />
+                    {announcement.created_by_name}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-slate-400">
+                <Megaphone className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <p>Chưa có thông báo nào.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Admin Dashboard (existing code)
+  if (statsError) {
     return (
       <div className="p-6 bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 rounded-2xl border border-rose-200 dark:border-rose-800">
         Không thể tải dữ liệu Dashboard. Vui lòng kiểm tra lại backend.

@@ -156,3 +156,34 @@ class Result(models.Model):
 
     def __str__(self):
         return f"{self.student_exam.student.full_name} - {self.score} điểm"
+
+
+class Announcement(models.Model):
+    title = models.CharField(max_length=255, verbose_name="Tiêu đề thông báo")
+    content = models.TextField(verbose_name="Nội dung thông báo")
+    is_active = models.BooleanField(default=True, verbose_name="Hiển thị")
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.title
+
+
+class Attendance(models.Model):
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='attendances')
+    date = models.DateField(verbose_name="Ngày điểm danh")
+    is_absent = models.BooleanField(default=False, verbose_name="Vắng mặt")
+    note = models.CharField(max_length=255, blank=True, verbose_name="Ghi chú")
+    marked_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-date']
+        unique_together = ['student', 'date']
+
+    def __str__(self):
+        return f"{self.student.full_name} - {self.date} - {'Vắng' if self.is_absent else 'Có mặt'}"
