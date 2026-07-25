@@ -15,7 +15,8 @@ const Attendance = () => {
     queryKey: ['students'],
     queryFn: async () => {
       const res = await api.get('/students/');
-      return res.data;
+      // API dùng PageNumberPagination → trả {count, next, results: [...]}
+      return res.data.results || res.data;
     }
   });
 
@@ -23,7 +24,8 @@ const Attendance = () => {
     queryKey: ['attendances', selectedDate],
     queryFn: async () => {
       const res = await api.get(`/attendances/?date=${selectedDate}`);
-      return res.data;
+      // API dùng PageNumberPagination → trả {count, next, results: [...]}
+      return res.data.results || res.data;
     }
   });
 

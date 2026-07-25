@@ -14,7 +14,8 @@ const Announcements = () => {
     queryKey: ['announcements'],
     queryFn: async () => {
       const res = await api.get('/announcements/');
-      return res.data;
+      // API dùng PageNumberPagination → trả {count, next, results: [...]}
+      return res.data.results || res.data;
     }
   });
 
