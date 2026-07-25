@@ -37,7 +37,9 @@ const Dashboard = () => {
       const res = await api.get('/dashboard/');
       return res.data;
     },
-    enabled: !isStudent // Only load if admin
+    enabled: !isStudent, // Only load if admin
+    retry: 1, // Chỉ retry 1 lần thay vì 3 (default) để fail nhanh
+    staleTime: 5 * 60 * 1000, // Cache 5 phút
   });
 
   // Student announcements
@@ -60,8 +62,17 @@ const Dashboard = () => {
     enabled: isStudent // Only load if student
   });
 
-  // Loading state
-  if (statsLoading || announcementsLoading) {
+  // Chờ profile load xong để biết là admin hay student
+  if (!profile) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  // Student Dashboard — chỉ chờ announcements load
+  if (isStudent && announcementsLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
@@ -164,6 +175,15 @@ const Dashboard = () => {
             )}
           </div>
         </div>
+      </div>
+    );
+  }
+
+  // Admin Dashboard — chỉ chờ stats load
+  if (!isStudent && statsLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }

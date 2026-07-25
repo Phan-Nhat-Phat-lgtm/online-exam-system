@@ -63,13 +63,14 @@ class ErrorBoundary extends React.Component {
               Đã có lỗi runtime xảy ra khi tải trang. Thử tải lại trang, nếu vẫn lỗi hãy báo kèm nội dung lỗi bên dưới.
             </p>
 
-            {isDev && error && (
+            {/* LUÔN hiện lỗi (kèm nút copy) để thầy biết sửa cái gì */}
+            {error && (
               <div className="mb-6 text-left">
                 <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Chi tiết lỗi</div>
                 <pre className="text-xs bg-slate-100 dark:bg-slate-950 text-rose-600 dark:text-rose-400 p-3 rounded-lg overflow-auto max-h-40 whitespace-pre-wrap break-all border border-slate-200 dark:border-slate-800">
                   {error.toString()}
                 </pre>
-                {errorInfo?.componentStack && (
+                {errorInfo?.componentStack && isDev && (
                   <details className="mt-2">
                     <summary className="text-xs text-slate-500 cursor-pointer hover:text-slate-700 dark:hover:text-slate-300">
                       Xem component stack
@@ -95,7 +96,7 @@ class ErrorBoundary extends React.Component {
               >
                 Về trang chủ
               </button>
-              {isDev && (
+              {error && (
                 <button
                   onClick={this.handleCopyError}
                   className="btn-secondary px-6 py-2.5"
