@@ -137,7 +137,7 @@ const ExamTaking = () => {
         api.post(`/student-exams/${studentExam.id}/save_answer/`, {
           question_id: qId,
           selected_answer: optionLetter,
-          is_flagged: flagged[qId] || False,
+          is_flagged: flagged[qId] || false,
           time_spent: studentExam.exam_info.duration_minutes * 60 - timeLeft
         }).catch(() => {});
       }
