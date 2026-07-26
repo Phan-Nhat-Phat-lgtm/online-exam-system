@@ -15,14 +15,21 @@ class StudentSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
     username = serializers.CharField(write_only=True, required=False)
     password = serializers.CharField(write_only=True, required=False)
+    # Số buổi vắng (is_absent=True) — để trang "Quản lý học sinh" hiển thị
+    # tiến độ. Ngưỡng cảnh báo = 5 buổi (xem AttendanceViewSet.my_attendance_summary).
+    absent_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Student
         fields = [
             'id', 'student_id', 'full_name', 'class_name', 'email',
-            'is_active', 'user', 'username', 'password', 'created_at'
+            'is_active', 'user', 'username', 'password', 'created_at',
+            'absent_count'
         ]
         read_only_fields = ['id', 'user', 'created_at']
+
+    def get_absent_count(self, obj):
+        return Attendance.objects.filter(student=obj, is_absent=True).count()
 
     def create(self, validated_data):
         username = validated_data.pop('username', validated_data.get('student_id'))

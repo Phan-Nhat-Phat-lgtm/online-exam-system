@@ -13,8 +13,41 @@ import {
   Edit,
   X,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  CalendarX
 } from 'lucide-react';
+
+// Thanh tiến độ vắng học (tối đa 5 buổi).
+// 1-4: tô xanh dần theo số buổi; tới buổi thứ 5 -> chuyển ĐỎ (cảnh báo).
+const MAX_ABSENT = 5;
+const AbsentProgress = ({ count = 0 }) => {
+  const c = Math.max(0, Math.min(count, MAX_ABSENT));
+  const isOver = c >= MAX_ABSENT;
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex gap-1">
+        {Array.from({ length: MAX_ABSENT }).map((_, i) => {
+          const filled = i < c;
+          return (
+            <span
+              key={i}
+              className={`w-2.5 h-2.5 rounded-full transition-colors ${
+                filled
+                  ? isOver
+                    ? 'bg-rose-500'
+                    : 'bg-amber-500'
+                  : 'bg-slate-200 dark:bg-slate-700'
+              }`}
+            />
+          );
+        })}
+      </div>
+      <span className={`text-xs font-bold ${isOver ? 'text-rose-600 dark:text-rose-400' : 'text-slate-600 dark:text-slate-300'}`}>
+        {c}/{MAX_ABSENT}
+      </span>
+    </div>
+  );
+};
 
 const Students = () => {
   const queryClient = useQueryClient();
@@ -165,6 +198,7 @@ const Students = () => {
                 <th className="py-3.5 px-4">Họ và tên</th>
                 <th className="py-3.5 px-4">Lớp</th>
                 <th className="py-3.5 px-4">Email</th>
+                <th className="py-3.5 px-4 text-center">Vắng học</th>
                 <th className="py-3.5 px-4">Username</th>
                 <th className="py-3.5 px-4 text-center">Trạng thái</th>
                 <th className="py-3.5 px-4 text-right">Thao tác</th>
@@ -173,7 +207,7 @@ const Students = () => {
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
               {isLoading ? (
                 <tr>
-                  <td colSpan="7" className="py-8 text-center">
+                  <td colSpan="8" className="py-8 text-center">
                     <div className="inline-block w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
                   </td>
                 </tr>
@@ -193,6 +227,17 @@ const Students = () => {
                     </td>
                     <td className="py-3.5 px-4 text-slate-500 dark:text-slate-400 text-xs">
                       {st.email || '—'}
+                    </td>
+                    <td className="py-3.5 px-4 text-center">
+                      <div className="flex flex-col items-center gap-1">
+                        <AbsentProgress count={st.absent_count} />
+                        {(st.absent_count || 0) >= 5 && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-600 dark:text-rose-400">
+                            <CalendarX className="w-3 h-3" />
+                            Nghỉ quá 5 buổi
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="py-3.5 px-4 font-mono text-xs text-slate-600 dark:text-slate-400">
                       {st.user?.username}
@@ -251,7 +296,7 @@ const Students = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="7" className="py-8 text-center text-slate-400">
+                  <td colSpan="8" className="py-8 text-center text-slate-400">
                     Không tìm thấy học sinh nào.
                   </td>
                 </tr>

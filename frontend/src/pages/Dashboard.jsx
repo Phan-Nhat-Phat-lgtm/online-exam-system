@@ -94,41 +94,65 @@ const Dashboard = () => {
           </p>
         </div>
 
-        {/* Attendance Warning */}
-        {attendanceSummary?.warning && (
-          <div className="glass-card p-6 bg-rose-50 dark:bg-rose-950/30 border-rose-300 dark:border-rose-800">
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-xl bg-rose-100 dark:bg-rose-900/60 text-rose-600 dark:text-rose-400 flex items-center justify-center flex-shrink-0">
-                <AlertTriangle className="w-6 h-6" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-bold text-rose-900 dark:text-rose-300 text-lg">
-                  ⚠️ Cảnh báo điểm danh
-                </h3>
-                <p className="text-rose-700 dark:text-rose-400 mt-2">
-                  Bạn đã nghỉ <span className="font-black text-xl">{attendanceSummary?.absent_days}</span> buổi. 
-                  {attendanceSummary?.absent_days >= 5 && (
-                    <span className="font-semibold"> Bạn không được nghỉ quá 5 buổi!</span>
-                  )}
-                </p>
-                <div className="mt-3 flex items-center gap-6 text-sm">
-                  <div>
-                    <span className="text-slate-600 dark:text-slate-400">Tổng buổi học:</span>
-                    <span className="ml-2 font-bold text-slate-900 dark:text-white">{attendanceSummary?.total_days}</span>
-                  </div>
-                  <div>
-                    <span className="text-emerald-600 dark:text-emerald-400">Có mặt:</span>
-                    <span className="ml-2 font-bold text-emerald-700 dark:text-emerald-300">{attendanceSummary?.present_days}</span>
-                  </div>
-                  <div>
-                    <span className="text-rose-600 dark:text-rose-400">Vắng:</span>
-                    <span className="ml-2 font-bold text-rose-700 dark:text-rose-300">{attendanceSummary?.absent_days}</span>
+        {/* Tiến độ vắng học — luôn hiển thị, tô dần 1→5, tới buổi 5 thì ĐỎ + thông báo */}
+        {(() => {
+          const MAX = 5;
+          const absent = attendanceSummary?.absent_days || 0;
+          const over = absent >= MAX;
+          return (
+            <div className={`glass-card p-6 ${
+              over
+                ? 'bg-rose-50 dark:bg-rose-950/30 border-rose-300 dark:border-rose-800'
+                : 'bg-amber-50/40 dark:bg-amber-950/10 border-amber-200 dark:border-amber-900'
+            }`}>
+              <div className="flex items-start gap-4">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                  over
+                    ? 'bg-rose-100 dark:bg-rose-900/60 text-rose-600 dark:text-rose-400'
+                    : 'bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400'
+                }`}>
+                  {over ? <AlertTriangle className="w-6 h-6" /> : <Calendar className="w-6 h-6" />}
+                </div>
+                <div className="flex-1">
+                  <h3 className={`font-bold text-lg ${
+                    over ? 'text-rose-900 dark:text-rose-300' : 'text-amber-900 dark:text-amber-300'
+                  }`}>
+                    {over ? '⚠️ Bạn đã nghỉ quá số buổi!' : 'Tiến độ vắng học'}
+                  </h3>
+                  <p className={`mt-1 text-sm ${
+                    over ? 'text-rose-700 dark:text-rose-400' : 'text-amber-700 dark:text-amber-400'
+                  }`}>
+                    {over
+                      ? `Bạn đã nghỉ ${absent} buổi. Hệ thống chỉ cho phép nghỉ tối đa 5 buổi, vui lòng liên hệ giảng viên.`
+                      : `Bạn đã nghỉ ${absent}/${MAX} buổi. Tới buổi thứ 5 sẽ bị cảnh báo.`}
+                  </p>
+
+                  {/* Thanh tiến độ 5 ô */}
+                  <div className="mt-4 flex items-center gap-2">
+                    {Array.from({ length: MAX }).map((_, i) => {
+                      const filled = i < absent;
+                      return (
+                        <span
+                          key={i}
+                          className={`flex-1 h-3 rounded-full transition-colors ${
+                            filled
+                              ? (over ? 'bg-rose-500' : 'bg-amber-500')
+                              : 'bg-slate-200 dark:bg-slate-700'
+                          }`}
+                        />
+                      );
+                    })}
+                    <span className={`ml-2 text-sm font-black ${
+                      over ? 'text-rose-600 dark:text-rose-400' : 'text-slate-700 dark:text-slate-200'
+                    }`}>
+                      {absent}/{MAX}
+                    </span>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Announcements */}
         <div className="glass-card p-6 space-y-4">

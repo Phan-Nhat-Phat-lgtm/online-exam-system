@@ -32,7 +32,10 @@ const Attendance = () => {
   const markAbsentMutation = useMutation({
     mutationFn: (data) => api.post('/attendances/mark_absent/', data),
     onSuccess: () => {
+      // Làm mới cả attendances (ngày hiện tại) lẫn students
+      // để tiến độ vắng học ở trang "Quản lý học sinh" cập nhật ngay.
       queryClient.invalidateQueries(['attendances']);
+      queryClient.invalidateQueries(['students']);
       toast.success('Đã điểm danh vắng!');
       setSelectedStudents([]);
       setNote('');
