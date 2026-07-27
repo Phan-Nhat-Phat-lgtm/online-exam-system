@@ -61,9 +61,22 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'exam_system.wsgi.application'
 
-# Database Configuration: Default to PostgreSQL if DB env set, fallback to SQLite locally
-DATABASE_URL = os.getenv('DATABASE_URL')
-if DATABASE_URL:
+# Database Configuration:
+# Ưu tiên DB_OVERRIDE (bypass Render DB injection từ database link cũ)
+# > DATABASE_URL > DB_NAME > SQLite
+# (Migrate data: Render DB → Aiven ngày 2026-07-27)
+DB_OVERRIDE = os.getenv('DB_OVERRIDE', '')
+DATABASE_URL = os.getenv('DATABASE_URL', '')
+
+if DB_OVERRIDE:
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=DB_OVERRIDE,
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
+    }
+elif DATABASE_URL:
     DATABASES = {
         'default': dj_database_url.config(
             default=DATABASE_URL,
