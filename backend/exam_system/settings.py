@@ -68,6 +68,21 @@ WSGI_APPLICATION = 'exam_system.wsgi.application'
 DB_OVERRIDE = os.getenv('DB_OVERRIDE', '')
 DATABASE_URL = os.getenv('DATABASE_URL', '')
 
+# DEBUG: In ra DB thật sự được dùng (theo đề xuất: không đoán, verify bằng data)
+# Phân biệt: aivencloud.com = Aiven ✅ | postgres.render.com = Render cũ ❌
+print("=" * 60, flush=True)
+print(f"[DB DEBUG] DB_OVERRIDE set? {'YES' if DB_OVERRIDE else 'NO'}", flush=True)
+print(f"[DB DEBUG] DATABASE_URL set? {'YES' if DATABASE_URL else 'NO'}", flush=True)
+if DB_OVERRIDE:
+    print(f"[DB DEBUG] -> Dùng DB_OVERRIDE (Aiven)", flush=True)
+    _db_host = DB_OVERRIDE.split('@')[-1].split(':')[0] if '@' in DB_OVERRIDE else 'unknown'
+    print(f"[DB DEBUG] -> DB host: {_db_host}", flush=True)
+elif DATABASE_URL:
+    print(f"[DB DEBUG] -> Dùng DATABASE_URL", flush=True)
+    _db_host = DATABASE_URL.split('@')[-1].split(':')[0] if '@' in DATABASE_URL else 'unknown'
+    print(f"[DB DEBUG] -> DB host: {_db_host}", flush=True)
+print("=" * 60, flush=True)
+
 if DB_OVERRIDE:
     DATABASES = {
         'default': dj_database_url.config(
