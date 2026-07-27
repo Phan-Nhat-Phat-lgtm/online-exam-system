@@ -17,10 +17,11 @@ services:
         value: "False"
       - key: SECRET_KEY
         generateValue: true
+      # DATABASE_URL được set thủ công trong Render Dashboard (Environment)
+      # sang Aiven — KHÔNG dùng fromDatabase của Render DB cũ nữa.
+      # (Migrate data: Render DB → Aiven ngày 2026-07-27)
       - key: DATABASE_URL
-        fromDatabase:
-          name: exam-db
-          property: connectionString
+        sync: false
       - key: RENDER
         value: "true"
 
@@ -39,9 +40,3 @@ services:
     envVars:
       - key: VITE_API_URL
         value: https://exam-backend-n1fc.onrender.com/api
-
-databases:
-  - name: exam-db
-    databaseName: exam_db
-    user: exam_user
-    plan: free
