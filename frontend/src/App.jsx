@@ -13,6 +13,7 @@ import Questions from './pages/Questions';
 import Exams from './pages/Exams';
 import StudentExams from './pages/StudentExams';
 import ExamTaking from './pages/ExamTaking';
+import ExamReview from './pages/ExamReview';
 import Results from './pages/Results';
 import Announcements from './pages/Announcements';
 import Attendance from './pages/Attendance';
@@ -41,6 +42,7 @@ function App() {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/results" element={<Results />} />
               <Route path="/student-exams" element={<StudentExams />} />
+              <Route path="/exam-review/:id" element={<ExamReview />} />
             </Route>
 
             {/* Admin Only Routes */}

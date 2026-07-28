@@ -106,14 +106,15 @@ class StudentExamQuestionSerializer(serializers.ModelSerializer):
         fields = [
             'order', 'question_id', 'content',
             'display_option_a', 'display_option_b',
-            'display_option_c', 'display_option_d'
+            'display_option_c', 'display_option_d',
+            'correct_display_option'
         ]
 
 
 class StudentAnswerSerializer(serializers.ModelSerializer):
     class Meta:
         model = StudentAnswer
-        fields = ['question', 'selected_answer', 'is_flagged', 'updated_at']
+        fields = ['question', 'selected_answer', 'is_correct', 'is_flagged', 'updated_at']
 
 
 class StudentExamSerializer(serializers.ModelSerializer):
@@ -122,6 +123,7 @@ class StudentExamSerializer(serializers.ModelSerializer):
     student_id = serializers.CharField(source='student.student_id', read_only=True)
     class_name = serializers.CharField(source='student.class_name', read_only=True)
     exam_questions = StudentExamQuestionSerializer(many=True, read_only=True)
+    student_answers = StudentAnswerSerializer(source='answers', many=True, read_only=True)
 
     class Meta:
         model = StudentExam
@@ -129,7 +131,7 @@ class StudentExamSerializer(serializers.ModelSerializer):
             'id', 'student', 'student_id', 'student_name', 'class_name',
             'exam', 'exam_info', 'status', 'started_at', 'submitted_at',
             'score', 'correct_count', 'incorrect_count', 'total_questions',
-            'time_spent', 'exam_questions', 'created_at'
+            'time_spent', 'exam_questions', 'student_answers', 'created_at'
         ]
 
 

@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { format } from 'date-fns';
-import { BookMarked, Clock, Calendar, CheckCircle2, AlertCircle, PlayCircle } from 'lucide-react';
+import { BookMarked, Clock, Calendar, CheckCircle2, AlertCircle, PlayCircle, Eye } from 'lucide-react';
 
 const StudentExams = () => {
   const navigate = useNavigate();
@@ -72,12 +72,21 @@ const StudentExams = () => {
 
                 <div className="pt-6 mt-4 border-t border-slate-100 dark:border-slate-800">
                   {isFinished ? (
-                    <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 flex items-center justify-between font-bold text-sm">
-                      <span className="flex items-center gap-2">
-                        <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                        Điểm số:
-                      </span>
-                      <span className="text-lg">{exam.score} / 10</span>
+                    <div className="space-y-3">
+                      <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 flex items-center justify-between font-bold text-sm">
+                        <span className="flex items-center gap-2">
+                          <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                          Điểm số:
+                        </span>
+                        <span className="text-lg">{exam.score} / 10</span>
+                      </div>
+                      <button
+                        onClick={() => navigate(`/exam-review/${exam.student_exam_id}`)}
+                        className="btn-secondary w-full flex items-center justify-center gap-2"
+                      >
+                        <Eye className="w-4 h-4" />
+                        Xem lại bài làm
+                      </button>
                     </div>
                   ) : canStart ? (
                     <button

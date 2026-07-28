@@ -11,7 +11,8 @@ import {
   AlertTriangle,
   Send,
   WifiOff,
-  UserCheck
+  UserCheck,
+  Eye
 } from 'lucide-react';
 
 const ExamTaking = () => {
@@ -228,9 +229,21 @@ const ExamTaking = () => {
             </div>
           </div>
 
-          <button onClick={() => navigate('/student-exams')} className="btn-primary w-full py-3">
-            Quay lại danh sách kỳ thi
-          </button>
+          <div className="space-y-3">
+            <button
+              onClick={() => navigate(`/exam-review/${studentExam?.id}`)}
+              className="btn-primary w-full py-3 flex items-center justify-center gap-2"
+            >
+              <Eye className="w-5 h-5" />
+              Xem lại bài làm ngay
+            </button>
+            <button
+              onClick={() => navigate('/student-exams')}
+              className="btn-secondary w-full py-3"
+            >
+              Quay lại danh sách kỳ thi
+            </button>
+          </div>
         </div>
       </div>
     );
