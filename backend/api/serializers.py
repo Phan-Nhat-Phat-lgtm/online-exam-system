@@ -58,12 +58,16 @@ class StudentSerializer(serializers.ModelSerializer):
 
 
 class QuestionBankSerializer(serializers.ModelSerializer):
-    question_count = serializers.IntegerField(source='questions.count', read_only=True)
+    question_count = serializers.SerializerMethodField()
     created_by_name = serializers.CharField(source='created_by.username', read_only=True)
 
     class Meta:
         model = QuestionBank
         fields = ['id', 'name', 'description', 'question_count', 'created_by_name', 'created_at']
+
+    def get_question_count(self, obj):
+        # Optimized to use count if already annotated, otherwise standard count
+        return getattr(obj, 'questions_count', obj.questions.count())
 
 
 class QuestionSerializer(serializers.ModelSerializer):

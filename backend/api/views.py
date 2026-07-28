@@ -107,7 +107,7 @@ class QuestionViewSet(viewsets.ModelViewSet):
 
 
 class ExamViewSet(viewsets.ModelViewSet):
-    queryset = Exam.objects.all()
+    queryset = Exam.objects.all().prefetch_related('question_banks')
     serializer_class = ExamSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     search_fields = ['name']
@@ -148,7 +148,7 @@ class ExamViewSet(viewsets.ModelViewSet):
 
 
 class StudentExamViewSet(viewsets.ModelViewSet):
-    queryset = StudentExam.objects.all()
+    queryset = StudentExam.objects.all().select_related('student', 'exam').prefetch_related('exam_questions', 'answers')
     serializer_class = StudentExamSerializer
     permission_classes = [IsAuthenticated]
 
@@ -193,7 +193,8 @@ class StudentExamViewSet(viewsets.ModelViewSet):
             count = min(exam.total_questions, len(all_questions))
             selected_questions = random.sample(all_questions, count)
 
-            # Create shuffled questions for this student
+            # Create shuffled questions for this student (Optimized with bulk_create)
+            exam_questions_to_create = []
             for idx, q in enumerate(selected_questions, start=1):
                 options = [
                     ('A', q.option_a),
@@ -203,7 +204,6 @@ class StudentExamViewSet(viewsets.ModelViewSet):
                 ]
                 random.shuffle(options)
                 
-                # Find which new display letter matches original correct answer
                 correct_letter = None
                 display_letters = ['A', 'B', 'C', 'D']
                 display_map = {}
@@ -213,7 +213,7 @@ class StudentExamViewSet(viewsets.ModelViewSet):
                     if orig_letter == q.correct_answer:
                         correct_letter = dis_letter
 
-                StudentExamQuestion.objects.create(
+                exam_questions_to_create.append(StudentExamQuestion(
                     student_exam=student_exam,
                     question=q,
                     order=idx,
@@ -222,7 +222,9 @@ class StudentExamViewSet(viewsets.ModelViewSet):
                     display_option_c=display_map['C'],
                     display_option_d=display_map['D'],
                     correct_display_option=correct_letter
-                )
+                ))
+            
+            StudentExamQuestion.objects.bulk_create(exam_questions_to_create)
 
             student_exam.status = 'IN_PROGRESS'
             student_exam.started_at = now
@@ -286,6 +288,11 @@ class StudentExamViewSet(viewsets.ModelViewSet):
         correct_count = 0
         incorrect_count = 0
 
+        # Bulk update/create answers to improve performance
+        existing_answers = {ans.question_id: ans for ans in StudentAnswer.objects.filter(student_exam=student_exam)}
+        answers_to_update = []
+        answers_to_create = []
+
         for eq in exam_questions:
             q_id = str(eq.question.id)
             user_choice = answers_data.get(q_id) or answers_data.get(eq.question.id)
@@ -296,13 +303,23 @@ class StudentExamViewSet(viewsets.ModelViewSet):
             else:
                 incorrect_count += 1
 
-            ans_obj, _ = StudentAnswer.objects.get_or_create(
-                student_exam=student_exam,
-                question=eq.question
-            )
-            ans_obj.selected_answer = user_choice
-            ans_obj.is_correct = is_correct
-            ans_obj.save()
+            if eq.question.id in existing_answers:
+                ans_obj = existing_answers[eq.question.id]
+                ans_obj.selected_answer = user_choice
+                ans_obj.is_correct = is_correct
+                answers_to_update.append(ans_obj)
+            else:
+                answers_to_create.append(StudentAnswer(
+                    student_exam=student_exam,
+                    question=eq.question,
+                    selected_answer=user_choice,
+                    is_correct=is_correct
+                ))
+        
+        if answers_to_create:
+            StudentAnswer.objects.bulk_create(answers_to_create)
+        if answers_to_update:
+            StudentAnswer.objects.bulk_update(answers_to_update, ['selected_answer', 'is_correct'])
 
         total = student_exam.total_questions or len(exam_questions)
         score = round((correct_count / total * 10.0), 2) if total > 0 else 0.0
@@ -337,7 +354,7 @@ class StudentExamViewSet(viewsets.ModelViewSet):
 
 
 class ResultViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Result.objects.all()
+    queryset = Result.objects.all().select_related('student_exam__student', 'student_exam__exam')
     serializer_class = ResultSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
