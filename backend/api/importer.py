@@ -51,13 +51,13 @@ def import_questions_from_file(file_obj, filename, bank_id):
     
     current_q = None
     
-    # Regex patterns - Optimized for teacher's format
+    # Regex patterns - Ultra-flexible for teacher's format
     q_pattern = re.compile(r'^(?:Câu|câu)\s*(\d+)[\:\.]?\s*(.*)', re.IGNORECASE)
-    opt_a_pattern = re.compile(r'^A[\.\)\/\:]\s*(.*)', re.IGNORECASE)
-    opt_b_pattern = re.compile(r'^B[\.\)\/\:]\s*(.*)', re.IGNORECASE)
-    opt_c_pattern = re.compile(r'^C[\.\)\/\:]\s*(.*)', re.IGNORECASE)
-    opt_d_pattern = re.compile(r'^D[\.\)\/\:]\s*(.*)', re.IGNORECASE)
-    ans_pattern = re.compile(r'^(?:Đáp án|ĐÁP ÁN|Key|Đáp án đúng)\s*[\:\=]?\s*([A-D])', re.IGNORECASE)
+    opt_a_pattern = re.compile(r'^[A][\.\)\/\:\s]\s*(.*)', re.IGNORECASE)
+    opt_b_pattern = re.compile(r'^[B][\.\)\/\:\s]\s*(.*)', re.IGNORECASE)
+    opt_c_pattern = re.compile(r'^[C][\.\)\/\:\s]\s*(.*)', re.IGNORECASE)
+    opt_d_pattern = re.compile(r'^[D][\.\)\/\:\s]\s*(.*)', re.IGNORECASE)
+    ans_pattern = re.compile(r'^(?:Đáp án|ĐÁP ÁN|Key|Đáp án đúng|Câu trả lời)\s*[\:\=\s]*([A-D])', re.IGNORECASE)
 
     for line_idx, line in enumerate(lines, start=1):
         # Check if line matches a new Question
