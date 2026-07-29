@@ -277,80 +277,90 @@ class StudentExamViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def submit_exam(self, request, pk=None):
-        student_exam = self.get_object()
-        if student_exam.status == 'SUBMITTED':
-            return Response({'error': 'Bài thi này đã được nộp trước đó'}, status=status.HTTP_400_BAD_REQUEST)
-
-        answers_data = request.data.get('answers', {})
-        time_spent = request.data.get('time_spent', student_exam.time_spent)
-
-        exam_questions = StudentExamQuestion.objects.filter(student_exam=student_exam)
-        correct_count = 0
-        incorrect_count = 0
-
-        # Bulk update/create answers to improve performance
-        existing_answers = {ans.question_id: ans for ans in StudentAnswer.objects.filter(student_exam=student_exam)}
-        answers_to_update = []
-        answers_to_create = []
-
-        for eq in exam_questions:
-            q_id = str(eq.question.id)
-            user_choice = answers_data.get(q_id) or answers_data.get(eq.question.id)
+        try:
+            student_exam = self.get_object()
+            print(f"[SUBMIT DEBUG] Submitting exam ID: {student_exam.id} for student: {student_exam.student.full_name}")
             
-            is_correct = (user_choice == eq.correct_display_option) if user_choice else False
-            if is_correct:
-                correct_count += 1
-            else:
-                incorrect_count += 1
+            if student_exam.status == 'SUBMITTED':
+                return Response({'error': 'Bài thi này đã được nộp trước đó'}, status=status.HTTP_400_BAD_REQUEST)
 
-            if eq.question.id in existing_answers:
-                ans_obj = existing_answers[eq.question.id]
-                ans_obj.selected_answer = user_choice
-                ans_obj.is_correct = is_correct
-                answers_to_update.append(ans_obj)
-            else:
-                answers_to_create.append(StudentAnswer(
-                    student_exam=student_exam,
-                    question=eq.question,
-                    selected_answer=user_choice,
-                    is_correct=is_correct
-                ))
-        
-        if answers_to_create:
-            StudentAnswer.objects.bulk_create(answers_to_create)
-        if answers_to_update:
-            StudentAnswer.objects.bulk_update(answers_to_update, ['selected_answer', 'is_correct'])
+            answers_data = request.data.get('answers', {})
+            time_spent = request.data.get('time_spent', student_exam.time_spent)
 
-        total = student_exam.total_questions or len(exam_questions)
-        score = round((correct_count / total * 10.0), 2) if total > 0 else 0.0
+            exam_questions = StudentExamQuestion.objects.filter(student_exam=student_exam).select_related('question')
+            correct_count = 0
+            incorrect_count = 0
 
-        student_exam.status = 'SUBMITTED'
-        student_exam.submitted_at = timezone.now()
-        student_exam.score = score
-        student_exam.correct_count = correct_count
-        student_exam.incorrect_count = incorrect_count
-        student_exam.time_spent = time_spent
-        student_exam.save()
+            # Bulk update/create answers to improve performance
+            existing_answers = {ans.question_id: ans for ans in StudentAnswer.objects.filter(student_exam=student_exam)}
+            answers_to_update = []
+            answers_to_create = []
 
-        # Save Result object
-        Result.objects.update_or_create(
-            student_exam=student_exam,
-            defaults={
+            for eq in exam_questions:
+                q_id = str(eq.question.id)
+                user_choice = answers_data.get(q_id) or answers_data.get(eq.question.id)
+                
+                is_correct = (user_choice == eq.correct_display_option) if user_choice else False
+                if is_correct:
+                    correct_count += 1
+                else:
+                    incorrect_count += 1
+
+                if eq.question.id in existing_answers:
+                    ans_obj = existing_answers[eq.question.id]
+                    ans_obj.selected_answer = user_choice
+                    ans_obj.is_correct = is_correct
+                    answers_to_update.append(ans_obj)
+                else:
+                    answers_to_create.append(StudentAnswer(
+                        student_exam=student_exam,
+                        question=eq.question,
+                        selected_answer=user_choice,
+                        is_correct=is_correct
+                    ))
+            
+            if answers_to_create:
+                StudentAnswer.objects.bulk_create(answers_to_create)
+            if answers_to_update:
+                StudentAnswer.objects.bulk_update(answers_to_update, ['selected_answer', 'is_correct'])
+
+            total = student_exam.total_questions or len(exam_questions)
+            score = round((correct_count / total * 10.0), 2) if total > 0 else 0.0
+
+            student_exam.status = 'SUBMITTED'
+            student_exam.submitted_at = timezone.now()
+            student_exam.score = score
+            student_exam.correct_count = correct_count
+            student_exam.incorrect_count = incorrect_count
+            student_exam.time_spent = time_spent
+            student_exam.save()
+
+            # Save Result object
+            Result.objects.update_or_create(
+                student_exam=student_exam,
+                defaults={
+                    'score': score,
+                    'correct_count': correct_count,
+                    'incorrect_count': incorrect_count,
+                    'total_questions': total,
+                    'time_spent': time_spent
+                }
+            )
+
+            print(f"[SUBMIT DEBUG] Successfully submitted exam ID: {student_exam.id}. Score: {score}")
+            return Response({
+                'id': student_exam.id,
                 'score': score,
                 'correct_count': correct_count,
                 'incorrect_count': incorrect_count,
                 'total_questions': total,
                 'time_spent': time_spent
-            }
-        )
-
-        return Response({
-            'score': score,
-            'correct_count': correct_count,
-            'incorrect_count': incorrect_count,
-            'total_questions': total,
-            'time_spent': time_spent
-        })
+            })
+        except Exception as e:
+            import traceback
+            print(f"[SUBMIT ERROR] Exception occurred during submit: {str(e)}")
+            print(traceback.format_exc())
+            return Response({'error': f'Lỗi hệ thống khi nộp bài: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class ResultViewSet(viewsets.ReadOnlyModelViewSet):
