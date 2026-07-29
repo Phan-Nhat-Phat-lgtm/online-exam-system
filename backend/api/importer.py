@@ -10,14 +10,19 @@ def parse_docx(file_bytes):
     for para in doc.paragraphs:
         text = para.text.strip()
         if text:
-            lines.append(text)
+            # Tách dòng nếu các dòng bị dính nhau trong một paragraph
+            for sub_line in text.split('\n'):
+                if sub_line.strip():
+                    lines.append(sub_line.strip())
     # Check tables if content is inside tables
     for table in doc.tables:
         for row in table.rows:
             for cell in row.cells:
                 text = cell.text.strip()
                 if text:
-                    lines.append(text)
+                    for sub_line in text.split('\n'):
+                        if sub_line.strip():
+                            lines.append(sub_line.strip())
     return lines
 
 def parse_pdf(file_bytes):
@@ -60,9 +65,10 @@ def import_questions_from_file(file_obj, filename, bank_id):
     ans_pattern = re.compile(r'^(?:Đáp án|ĐÁP ÁN|Key|Đáp án đúng|Câu trả lời)\s*[\:\=\s]*([A-D])', re.IGNORECASE)
 
     for line_idx, line in enumerate(lines, start=1):
+        line = line.strip()
         # Check if line matches a new Question
         q_match = q_pattern.match(line)
-        ans_match = ans_pattern.match(line)
+        ans_match = ans_pattern.search(line) # Dùng search thay vì match để linh hoạt hơn
         opt_a = opt_a_pattern.match(line)
         opt_b = opt_b_pattern.match(line)
         opt_c = opt_c_pattern.match(line)
