@@ -62,7 +62,7 @@ def import_questions_from_file(file_obj, filename, bank_id):
     opt_b_pattern = re.compile(r'^[B][\.\)\/\:\s]\s*(.*)', re.IGNORECASE)
     opt_c_pattern = re.compile(r'^[C][\.\)\/\:\s]\s*(.*)', re.IGNORECASE)
     opt_d_pattern = re.compile(r'^[D][\.\)\/\:\s]\s*(.*)', re.IGNORECASE)
-    ans_pattern = re.compile(r'^(?:Đáp án|ĐÁP ÁN|Key|Đáp án đúng|Câu trả lời)\s*[\:\=\s]*([A-D])', re.IGNORECASE)
+    ans_pattern = re.compile(r'^(?:Đáp án|ĐÁP ÁN|Key|Đáp án đúng|Câu trả lời)\s*[\:\=\s]*([A-D])(?:\s|$)', re.IGNORECASE)
 
     for line_idx, line in enumerate(lines, start=1):
         line = line.strip()
