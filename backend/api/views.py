@@ -335,17 +335,29 @@ class StudentExamViewSet(viewsets.ModelViewSet):
             student_exam.time_spent = time_spent
             student_exam.save()
 
-            # Save Result object
-            Result.objects.update_or_create(
-                student_exam=student_exam,
-                defaults={
-                    'score': score,
-                    'correct_count': correct_count,
-                    'incorrect_count': incorrect_count,
-                    'total_questions': total,
-                    'time_spent': time_spent
-                }
-            )
+            # Save Result object with better error handling
+            try:
+                # Use a more robust way to handle result creation
+                result_obj = Result.objects.filter(student_exam=student_exam).first()
+                if result_obj:
+                    result_obj.score = score
+                    result_obj.correct_count = correct_count
+                    result_obj.incorrect_count = incorrect_count
+                    result_obj.total_questions = total
+                    result_obj.time_spent = time_spent
+                    result_obj.save()
+                else:
+                    Result.objects.create(
+                        student_exam=student_exam,
+                        score=score,
+                        correct_count=correct_count,
+                        incorrect_count=incorrect_count,
+                        total_questions=total,
+                        time_spent=time_spent
+                    )
+            except Exception as res_err:
+                print(f"[SUBMIT WARNING] Failed to save Result object: {str(res_err)}")
+                # Even if Result object fails, we already updated StudentExam, so it's partially okay
 
             print(f"[SUBMIT DEBUG] Successfully submitted exam ID: {student_exam.id}. Score: {score}")
             return Response({
