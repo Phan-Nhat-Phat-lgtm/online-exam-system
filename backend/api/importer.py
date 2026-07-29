@@ -11,6 +11,13 @@ def parse_docx(file_bytes):
         text = para.text.strip()
         if text:
             lines.append(text)
+    # Check tables if content is inside tables
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                text = cell.text.strip()
+                if text:
+                    lines.append(text)
     return lines
 
 def parse_pdf(file_bytes):
@@ -44,12 +51,12 @@ def import_questions_from_file(file_obj, filename, bank_id):
     
     current_q = None
     
-    # Regex patterns
-    q_pattern = re.compile(r'^(?:Câu|câu|\d+[\.\:])\s*(\d+)[\:\.]?\s*(.*)', re.IGNORECASE)
-    opt_a_pattern = re.compile(r'^[A][\.\)\/]\s*(.*)', re.IGNORECASE)
-    opt_b_pattern = re.compile(r'^[B][\.\)\/]\s*(.*)', re.IGNORECASE)
-    opt_c_pattern = re.compile(r'^[C][\.\)\/]\s*(.*)', re.IGNORECASE)
-    opt_d_pattern = re.compile(r'^[D][\.\)\/]\s*(.*)', re.IGNORECASE)
+    # Regex patterns - Optimized for teacher's format
+    q_pattern = re.compile(r'^(?:Câu|câu)\s*(\d+)[\:\.]?\s*(.*)', re.IGNORECASE)
+    opt_a_pattern = re.compile(r'^A[\.\)\/\:]\s*(.*)', re.IGNORECASE)
+    opt_b_pattern = re.compile(r'^B[\.\)\/\:]\s*(.*)', re.IGNORECASE)
+    opt_c_pattern = re.compile(r'^C[\.\)\/\:]\s*(.*)', re.IGNORECASE)
+    opt_d_pattern = re.compile(r'^D[\.\)\/\:]\s*(.*)', re.IGNORECASE)
     ans_pattern = re.compile(r'^(?:Đáp án|ĐÁP ÁN|Key|Đáp án đúng)\s*[\:\=]?\s*([A-D])', re.IGNORECASE)
 
     for line_idx, line in enumerate(lines, start=1):
@@ -100,14 +107,14 @@ def import_questions_from_file(file_obj, filename, bank_id):
         elif q_match:
             # Save previous unfinished question if exists
             if current_q:
-                if not current_q.get('correct_answer'):
-                    errors.append(f"Dòng {current_q['line_num']}: Câu hỏi trước thiếu đáp án đúng")
+                if current_q['content'] and current_q['option_a'] and current_q['option_b'] and current_q['option_c'] and current_q['option_d'] and current_q['correct_answer']:
+                    parsed_questions.append(current_q)
+                else:
+                    errors.append(f"Dòng {current_q['line_num']}: Câu hỏi '{current_q['content'][:30]}' chưa đầy đủ thông tin")
                 current_q = None
             
             content_text = q_match.group(2).strip()
-            if not content_text:
-                content_text = line
-            
+            # If "Câu 1:" has no text on the same line, the next lines will be appended
             current_q = {
                 'line_num': line_idx,
                 'content': content_text,
@@ -118,9 +125,19 @@ def import_questions_from_file(file_obj, filename, bank_id):
                 'correct_answer': '',
             }
         else:
-            if current_q and not current_q['option_a']:
-                # Multi-line question content continuation
-                current_q['content'] += ' ' + line
+            if current_q:
+                if not current_q['option_a']:
+                    # Multi-line question content continuation
+                    current_q['content'] = (current_q['content'] + ' ' + line).strip()
+                elif current_q['option_d']:
+                    # Might be text after option D but before answer
+                    pass
+                elif current_q['option_c']:
+                    current_q['option_c'] = (current_q['option_c'] + ' ' + line).strip()
+                elif current_q['option_b']:
+                    current_q['option_b'] = (current_q['option_b'] + ' ' + line).strip()
+                elif current_q['option_a']:
+                    current_q['option_a'] = (current_q['option_a'] + ' ' + line).strip()
 
     # Check unhandled last question if no explicit answer line found or finished
     if current_q:

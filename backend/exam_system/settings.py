@@ -87,17 +87,33 @@ if DB_OVERRIDE:
     DATABASES = {
         'default': dj_database_url.config(
             default=DB_OVERRIDE,
-            conn_max_age=600,
+            conn_max_age=None,  # Duy trì kết nối vĩnh viễn để giảm latency
             conn_health_checks=True,
+            ssl_require=True,
         )
+    }
+    DATABASES['default']['OPTIONS'] = {
+        'connect_timeout': 10,
+        'keepalives': 1,
+        'keepalives_idle': 30,
+        'keepalives_interval': 10,
+        'keepalives_count': 5,
     }
 elif DATABASE_URL:
     DATABASES = {
         'default': dj_database_url.config(
             default=DATABASE_URL,
-            conn_max_age=600,
+            conn_max_age=None,
             conn_health_checks=True,
+            ssl_require=True,
         )
+    }
+    DATABASES['default']['OPTIONS'] = {
+        'connect_timeout': 10,
+        'keepalives': 1,
+        'keepalives_idle': 30,
+        'keepalives_interval': 10,
+        'keepalives_count': 5,
     }
 elif os.getenv('DB_NAME'):
     DATABASES = {
