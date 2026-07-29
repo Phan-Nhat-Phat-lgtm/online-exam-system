@@ -89,6 +89,26 @@ class QuestionViewSet(viewsets.ModelViewSet):
     filterset_fields = ['bank']
     search_fields = ['content', 'option_a', 'option_b', 'option_c', 'option_d']
 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            try:
+                self.perform_create(serializer)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            except Exception as e:
+                import traceback
+                print("--- DATABASE ERROR DURING CREATE ---")
+                traceback.print_exc()
+                return Response({
+                    'error': 'Database Error',
+                    'detail': str(e),
+                    'traceback': traceback.format_exc()
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        print("--- SERIALIZER ERRORS ---")
+        print(serializer.errors)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
     @action(detail=False, methods=['post'])
     def import_questions(self, request):
         file_obj = request.FILES.get('file')
