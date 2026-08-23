@@ -5,7 +5,7 @@ from psycopg2 import sql
 
 
 def repair_missing_id_defaults():
-    database_url = os.environ.get("DATABASE_URL")
+    database_url = os.environ.get("DATABASE_URL", "").strip()
     if not database_url:
         print("[SEQUENCE REPAIR] DATABASE_URL is not set; nothing to repair.", flush=True)
         return
