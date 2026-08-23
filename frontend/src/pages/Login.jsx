@@ -40,7 +40,7 @@ const Login = () => {
       <div className="w-full max-w-md bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl p-8 rounded-3xl shadow-2xl border border-white/20 dark:border-slate-800/80 z-10">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-xl shadow-blue-500/30 mb-4">
-            <Sparkles className="w-8 h-8" />
+            <Sparkles className="w-8 h-8" strokeWidth={2.25} />
           </div>
           <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
             NHATPHAT | EXAMPRO
@@ -56,7 +56,7 @@ const Login = () => {
               Tên đăng nhập / MSSV
             </label>
             <div className="relative">
-              <User className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <User className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-300 pointer-events-none z-10" strokeWidth={2.25} />
               <input
                 type="text"
                 value={username}
@@ -73,7 +73,7 @@ const Login = () => {
               Mật khẩu
             </label>
             <div className="relative">
-              <KeyRound className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <KeyRound className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-300 pointer-events-none z-10" strokeWidth={2.25} />
               <input
                 type="password"
                 value={password}
@@ -95,7 +95,7 @@ const Login = () => {
             ) : (
               <>
                 <span>Đăng nhập hệ thống</span>
-                <ArrowRight className="w-5 h-5" />
+                <ArrowRight className="w-5 h-5" strokeWidth={2.25} />
               </>
             )}
           </button>

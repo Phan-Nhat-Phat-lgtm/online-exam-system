@@ -1,5 +1,8 @@
 import random
 import io
+import logging
+
+logger = logging.getLogger(__name__)
 from rest_framework import viewsets, status, generics
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -95,18 +98,13 @@ class QuestionViewSet(viewsets.ModelViewSet):
             try:
                 self.perform_create(serializer)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
-            except Exception as e:
-                import traceback
-                print("--- DATABASE ERROR DURING CREATE ---")
-                traceback.print_exc()
-                return Response({
-                    'error': 'Database Error',
-                    'detail': str(e),
-                    'traceback': traceback.format_exc()
-                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-        print("--- SERIALIZER ERRORS ---")
-        print(serializer.errors)
+            except Exception:
+                logger.exception("Question creation failed")
+                return Response(
+                    {'error': 'Database Error'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=['post'])
@@ -144,18 +142,15 @@ class ExamViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         if not serializer.is_valid():
-            print(f"[EXAM SERIALIZER ERROR] {serializer.errors}", flush=True)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         try:
             self.perform_create(serializer)
             headers = self.get_success_headers(serializer.data)
             return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
-        except Exception as exc:
-            import traceback
-            print("[EXAM CREATE ERROR]", flush=True)
-            print(traceback.format_exc(), flush=True)
+        except Exception:
+            logger.exception("Exam creation failed")
             return Response(
-                {'error': 'Database error while creating exam', 'detail': str(exc)},
+                {'error': 'Database error while creating exam'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
