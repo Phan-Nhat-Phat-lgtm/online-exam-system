@@ -30,7 +30,7 @@ $$;
 
 class Migration(migrations.Migration):
     dependencies = [
-        ('api', '0001_initial'),
+        ('api', '0002_announcement_attendance'),
     ]
 
     operations = [
