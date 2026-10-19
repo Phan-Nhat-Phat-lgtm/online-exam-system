@@ -28,6 +28,7 @@ from .serializers import (
 )
 from .permissions import IsAdminUser, IsStudentUser
 from .importer import import_questions_from_file
+from .ai import generate_questions_with_ai, save_ai_questions
 
 
 class UserProfileView(generics.GenericAPIView):
@@ -595,4 +596,89 @@ class AttendanceViewSet(viewsets.ModelViewSet):
         return Response({
             'message': f'Đã điểm danh vắng {created_count} học sinh',
             'created_count': created_count
+        })
+
+
+class GenerateQuestionsAIView(generics.GenericAPIView):
+    """Tính năng AI: tạo câu hỏi trắc nghiệm từ nội dung bài học bằng Google Gemini."""
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def post(self, request):
+        content = (request.data.get('content') or '').strip()
+        try:
+            count = int(request.data.get('count') or 10)
+        except (TypeError, ValueError):
+            count = 10
+        subject = (request.data.get('subject') or '').strip()
+        bank_id = request.data.get('bank_id')
+        save_to_bank = bool(request.data.get('save', False))
+
+        if len(content) < 50:
+            return Response(
+                {'success': False, 'error': 'Vui lòng dán nội dung bài học (tối thiểu 50 ký tự).'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if not (1 <= count <= 30):
+            return Response(
+                {'success': False, 'error': 'Số câu hỏi phải từ 1 đến 30.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if save_to_bank and not bank_id:
+            return Response(
+                {'success': False, 'error': 'Vui lòng chọn ngân hàng câu hỏi để lưu.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Chế độ lưu trực tiếp câu hỏi đã sinh ở bước trước (không sinh lại)
+        questions_payload = request.data.get('questions')
+        if save_to_bank and bank_id and isinstance(questions_payload, list) and questions_payload:
+            valid_payload = [
+                q for q in questions_payload
+                if isinstance(q, dict) and all(q.get(k) for k in
+                    ('content', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_answer'))
+            ]
+            if not valid_payload:
+                return Response(
+                    {'success': False, 'error': 'Dữ liệu câu hỏi không hợp lệ.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            try:
+                saved = save_ai_questions(valid_payload, bank_id)
+            except QuestionBank.DoesNotExist:
+                return Response(
+                    {'success': False, 'error': 'Ngân hàng câu hỏi không tồn tại.'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            return Response({'success': True, 'count': len(valid_payload), 'saved': saved})
+
+        try:
+            questions, raw = generate_questions_with_ai(content, count, subject)
+        except RuntimeError as e:
+            logger.exception('Lỗi khi gọi Gemini API')
+            return Response({'success': False, 'error': str(e)}, status=status.HTTP_502_BAD_GATEWAY)
+
+        if not questions:
+            return Response(
+                {
+                    'success': False,
+                    'error': 'AI không sinh được câu hỏi hợp lệ. Thử lại với nội dung bài học rõ hơn.',
+                },
+                status=status.HTTP_502_BAD_GATEWAY
+            )
+
+        saved = 0
+        if save_to_bank:
+            try:
+                saved = save_ai_questions(questions, bank_id)
+            except QuestionBank.DoesNotExist:
+                return Response(
+                    {'success': False, 'error': 'Ngân hàng câu hỏi không tồn tại.'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+        return Response({
+            'success': True,
+            'count': len(questions),
+            'saved': saved,
+            'questions': questions,
         })

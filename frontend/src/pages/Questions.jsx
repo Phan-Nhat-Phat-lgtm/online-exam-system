@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/axios';
 import toast from 'react-hot-toast';
 import {
+  Sparkles,
   HelpCircle,
   Plus,
   Upload,
@@ -39,6 +40,17 @@ const Questions = () => {
   const [importBankId, setImportBankId] = useState('');
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState(null);
+
+  // AI Generate State
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+  const [aiSubject, setAiSubject] = useState('');
+  const [aiCount, setAiCount] = useState(10);
+  const [aiContent, setAiContent] = useState('');
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiQuestions, setAiQuestions] = useState(null);
+  const [aiBankId, setAiBankId] = useState('');
+  const [aiSaving, setAiSaving] = useState(false);
+  const [aiError, setAiError] = useState(null);
 
   // Form State
   const [qFormData, setQFormData] = useState({
@@ -161,6 +173,70 @@ const Questions = () => {
     }
   };
 
+  const handleAiGenerate = async () => {
+    if (!aiContent || aiContent.trim().length < 50) {
+      toast.error('Vui lòng dán nội dung bài học (tối thiểu 50 ký tự)');
+      return;
+    }
+    setAiGenerating(true);
+    setAiQuestions(null);
+    setAiError(null);
+    try {
+      const res = await api.post('/generate_questions/', {
+        content: aiContent,
+        count: aiCount,
+        subject: aiSubject,
+      }, { timeout: 120000 });
+      if (res.data.success) {
+        setAiQuestions(res.data.questions);
+        toast.success(`AI đã tạo ${res.data.count} câu hỏi!`);
+      } else {
+        setAiError(res.data.error || 'Không tạo được câu hỏi.');
+        toast.error('Có lỗi khi AI tạo câu hỏi.');
+      }
+    } catch (err) {
+      const msg = err.response?.data?.error || err.message || 'Lỗi kết nối.';
+      setAiError(msg);
+      toast.error(msg);
+    } finally {
+      setAiGenerating(false);
+    }
+  };
+
+  const handleAiSave = async () => {
+    if (!aiBankId) {
+      toast.error('Vui lòng chọn ngân hàng câu hỏi');
+      return;
+    }
+    if (!aiQuestions || aiQuestions.length === 0) {
+      toast.error('Chưa có câu hỏi để lưu');
+      return;
+    }
+    setAiSaving(true);
+    try {
+      const res = await api.post('/generate_questions/', {
+        save: true,
+        bank_id: aiBankId,
+        questions: aiQuestions,
+      }, { timeout: 120000 });
+      if (res.data.success) {
+        toast.success(`Đã lưu ${res.data.saved} câu hỏi vào ngân hàng!`);
+        queryClient.invalidateQueries(['questions']);
+        queryClient.invalidateQueries(['banks']);
+        setIsAiModalOpen(false);
+        setAiQuestions(null);
+        setAiContent('');
+      } else {
+        toast.error(res.data.error || 'Lưu thất bại.');
+      }
+    } catch (err) {
+      const msg = err.response?.data?.error || err.message || 'Lỗi kết nối.';
+      toast.error(msg);
+    } finally {
+      setAiSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -176,6 +252,10 @@ const Questions = () => {
         </div>
 
         <div className="flex items-center gap-3">
+          <button onClick={() => { setAiQuestions(null); setAiError(null); setAiBankId(banks?.[0]?.id || ''); setIsAiModalOpen(true); }} className="btn-secondary !bg-gradient-to-r !from-violet-600 !to-indigo-600 !text-white !border-0 hover:!opacity-90">
+            <Sparkles className="w-5 h-5" />
+            <span>TẠO CÂU HỎI BẰNG AI</span>
+          </button>
           <button onClick={() => { setImportResult(null); setImportFile(null); setImportBankId(banks?.[0]?.id || ''); setIsImportModalOpen(true); }} className="btn-secondary">
             <Upload className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
             <span>IMPORT QUESTION</span>
@@ -466,6 +546,127 @@ const Questions = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* AI Generate Modal */}
+      {isAiModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-3xl w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-violet-600" />
+                <span>Tạo Câu Hỏi Bằng AI</span>
+              </h2>
+              <button onClick={() => setIsAiModalOpen(false)} className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Môn học (không bắt buộc)</label>
+                  <input
+                    type="text"
+                    value={aiSubject}
+                    onChange={(e) => setAiSubject(e.target.value)}
+                    placeholder="VD: Tin học 10"
+                    className="input-field"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Số câu hỏi (1-20)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="20"
+                    value={aiCount}
+                    onChange={(e) => setAiCount(Math.min(20, Math.max(1, parseInt(e.target.value) || 10)))}
+                    className="input-field"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">
+                  Nội dung bài học (dán văn bản từ giáo trình, bài giảng...)
+                </label>
+                <textarea
+                  value={aiContent}
+                  onChange={(e) => setAiContent(e.target.value)}
+                  placeholder="Dán toàn bộ nội dung bài học vào đây. AI sẽ đọc và tạo câu hỏi trắc nghiệm bám sát nội dung..."
+                  className="input-field min-h-[160px] font-sm"
+                />
+                <p className="text-xs text-slate-400 mt-1">{aiContent.length} ký tự (tối thiểu 50)</p>
+              </div>
+
+              {aiError && (
+                <div className="p-4 rounded-xl text-sm bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-200 border border-rose-200 flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
+                  <span>{aiError}</span>
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={handleAiGenerate} disabled={aiGenerating} className="btn-primary flex-1 !bg-gradient-to-r !from-violet-600 !to-indigo-600 !border-0">
+                  {aiGenerating ? (
+                    <span className="flex items-center gap-2">
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      AI đang soạn đề... (10-60 giây)
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2"><Sparkles className="w-5 h-5" /> Tạo Câu Hỏi</span>
+                  )}
+                </button>
+              </div>
+
+              {aiQuestions && (
+                <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                  <div>
+                    <p className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                      AI đã tạo {aiQuestions.length} câu hỏi. Kiểm tra bên dưới rồi chọn ngân hàng để lưu:
+                    </p>
+                    <select
+                      value={aiBankId}
+                      onChange={(e) => setAiBankId(e.target.value)}
+                      className="input-field"
+                    >
+                      <option value="">-- Chọn ngân hàng lưu trữ --</option>
+                      {banks?.map((b) => (
+                        <option key={b.id} value={b.id}>{b.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-3 max-h-72 overflow-y-auto pr-2">
+                    {aiQuestions.map((q, idx) => (
+                      <div key={idx} className="glass-card p-4 border border-slate-200 dark:border-slate-700 rounded-xl">
+                        <p className="font-semibold text-slate-900 dark:text-white text-sm">
+                          Câu {idx + 1}: {q.content}
+                        </p>
+                        <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-4 text-xs text-slate-600 dark:text-slate-400">
+                          <span className={q.correct_answer === 'A' ? 'font-bold text-emerald-600 dark:text-emerald-400' : ''}>A. {q.option_a}</span>
+                          <span className={q.correct_answer === 'B' ? 'font-bold text-emerald-600 dark:text-emerald-400' : ''}>B. {q.option_b}</span>
+                          <span className={q.correct_answer === 'C' ? 'font-bold text-emerald-600 dark:text-emerald-400' : ''}>C. {q.option_c}</span>
+                          <span className={q.correct_answer === 'D' ? 'font-bold text-emerald-600 dark:text-emerald-400' : ''}>D. {q.option_d}</span>
+                        </div>
+                        <p className="mt-2 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                          Đáp án đúng: {q.correct_answer}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <button type="button" onClick={() => setAiQuestions(null)} className="btn-secondary flex-1">Tạo lại</button>
+                    <button type="button" onClick={handleAiSave} disabled={aiSaving} className="btn-primary flex-1">
+                      {aiSaving ? 'Đang lưu...' : `Lưu ${aiQuestions.length} Câu Vào Ngân Hàng`}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
