@@ -147,3 +147,103 @@ def save_ai_questions(questions, bank_id):
         )
         saved += 1
     return saved
+
+
+def _call_gemini_json(prompt):
+    """Gọi Gemini và yêu cầu kết quả JSON, trả về dict."""
+    api_key = os.environ.get('GEMINI_API_KEY', '')
+    if not api_key:
+        raise RuntimeError('Chưa cấu hình GEMINI_API_KEY trên server.')
+    model = os.environ.get('GEMINI_MODEL', GEMINI_DEFAULT_MODEL)
+
+    payload = json.dumps({
+        'contents': [{'parts': [{'text': prompt}]}],
+        'generationConfig': {
+            'temperature': 0.4,
+            'responseMimeType': 'application/json',
+        },
+    }).encode('utf-8')
+
+    url = f'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}'
+    req = urllib.request.Request(
+        url, data=payload, headers={'Content-Type': 'application/json'}, method='POST'
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=90) as resp:
+            data = json.loads(resp.read().decode('utf-8'))
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode('utf-8', errors='replace')[:300]
+        raise RuntimeError(f'Gemini API lỗi {e.code}: {detail}')
+
+    try:
+        text = data['candidates'][0]['content']['parts'][0]['text']
+        return json.loads(text)
+    except (KeyError, IndexError, json.JSONDecodeError):
+        raise RuntimeError('AI không trả về dữ liệu hợp lệ. Vui lòng thử lại.')
+
+
+def generate_exam_feedback(student_exam):
+    """Sinh phản hồi học tập cá nhân hoá sau khi học sinh nộp bài."""
+    exam = student_exam.exam
+    exam_questions = {eq.question_id: eq for eq in student_exam.exam_questions.all()}
+    answers = {a.question_id: a for a in student_exam.answers.all()}
+
+    wrong_items = []
+    correct_items = 0
+    blank_items = 0
+    for eq in student_exam.exam_questions.all():
+        ans = answers.get(eq.question_id)
+        q = eq.question
+        if ans and ans.selected_answer and not ans.is_correct:
+            def _opt_text(letter):
+                return {
+                    'A': eq.display_option_a,
+                    'B': eq.display_option_b,
+                    'C': eq.display_option_c,
+                    'D': eq.display_option_d,
+                }.get(letter, '')
+            wrong_items.append({
+                'question': q.content[:250],
+                'chosen': _opt_text(ans.selected_answer)[:150],
+                'correct': _opt_text(eq.correct_display_option)[:150],
+            })
+        elif ans and ans.is_correct:
+            correct_items += 1
+        elif not ans or not ans.selected_answer:
+            blank_items += 1
+
+    score = student_exam.score or 0
+    minutes = round((student_exam.time_spent or 0) / 60)
+
+    data_block = {
+        'ky_thi': exam.name,
+        'diem': score,
+        'so_cau_dung': correct_items,
+        'so_cau_sai': len(wrong_items),
+        'so_cau_bo_trong': blank_items,
+        'thoi_lam_bai_phut': minutes,
+        'cac_cau_sai': wrong_items[:20],
+    }
+
+    prompt = f"""Bạn là cố vấn học tập AI của một học sinh Việt Nam vừa làm bài thi trắc nghiệm online.
+Dựa vào kết quả dưới đây, hãy viết phản hồi học tập CÁ NHÂN HOÁ, ấm áp, động viên nhưng trung thực về điểm yếu.
+
+DỮ LIỆU BÀI THI:
+{json.dumps(data_block, ensure_ascii=False, indent=1)}
+
+Yêu cầu nội dung:
+- Ngôn ngữ: tiếng Việt, xưng "em" khi nói với học sinh, giáo viên nhẹ nhàng
+- Tìm MẪU trong các câu sai (cùng chủ điểm sai nhiều câu → kiến thức hổng; sai rải rác → cẩn thận/kỹ năng làm bài)
+- Gợi ý ôn tập PHỤC VỤ LUYỆN TẬP THẾ, dựa trực tiếp trên nội dung câu hỏi bị sai
+
+Trả về ĐÚNG JSON với schema:
+{{
+  "summary": "2-3 câu nhận xét tổng quan về bài làm và thái độ",
+  "strengths": ["1-3 điểm mạnh cụ thể"],
+  "weak_topics": [{{"topic": "tên chủ điểm yếu", "note": "giải thích vì sao sai, lỗi thường gặp"}}],
+  "advice": ["3-5 gợi ý ôn tập cụ thể, kèm hành động ngay được"],
+  "encouragement": "1 câu động viên gửi riêng cho em ấy"
+}}
+Các chuỗi viết bằng tiếng Việt tự nhiên."""
+
+    return _call_gemini_json(prompt)

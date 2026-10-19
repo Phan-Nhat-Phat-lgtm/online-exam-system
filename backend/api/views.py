@@ -18,7 +18,7 @@ import openpyxl
 from .models import (
     Student, QuestionBank, Question, Exam,
     StudentExam, StudentExamQuestion, StudentAnswer, Result,
-    Announcement, Attendance
+    Announcement, Attendance, AIExamFeedback
 )
 from .serializers import (
     StudentSerializer, QuestionBankSerializer, QuestionSerializer,
@@ -28,7 +28,8 @@ from .serializers import (
 )
 from .permissions import IsAdminUser, IsStudentUser
 from .importer import import_questions_from_file
-from .ai import generate_questions_with_ai, save_ai_questions
+from .ai import generate_questions_with_ai, save_ai_questions, generate_exam_feedback
+import json as _json
 
 
 class UserProfileView(generics.GenericAPIView):
@@ -278,6 +279,41 @@ class StudentExamViewSet(viewsets.ModelViewSet):
         response_data['saved_answers'] = answers_dict
 
         return Response(response_data)
+
+    @action(detail=True, methods=['post'])
+    def ai_feedback(self, request, pk=None):
+        """Tính năng AI: phản hồi học tập cá nhân hoá sau khi nộp bài."""
+        student_exam = self.get_object()
+
+        # Quyền: admin xem được, học sinh chỉ xem bài của chính mình
+        if not (request.user.is_staff or request.user.is_superuser):
+            student = getattr(request.user, 'student_profile', None)
+            if not student or student_exam.student_id != student.id:
+                return Response({'error': 'Bạn không có quyền xem bài thi này'}, status=status.HTTP_403_FORBIDDEN)
+
+        if student_exam.status != 'SUBMITTED':
+            return Response({'error': 'Bài thi chưa được nộp, chưa có phản hồi'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Nếu đã có phản hồi thì trả về luôn, không tốn lượt gọi AI
+        existing = AIExamFeedback.objects.filter(student_exam=student_exam).first()
+        if existing:
+            try:
+                feedback = _json.loads(existing.content)
+                return Response({'success': True, 'feedback': feedback, 'cached': True})
+            except _json.JSONDecodeError:
+                existing.delete()
+
+        try:
+            feedback = generate_exam_feedback(student_exam)
+        except RuntimeError as e:
+            logger.exception('Lỗi khi sinh phản hồi AI cho bài thi %s', student_exam.id)
+            return Response({'success': False, 'error': str(e)}, status=status.HTTP_502_BAD_GATEWAY)
+
+        AIExamFeedback.objects.create(
+            student_exam=student_exam,
+            content=_json.dumps(feedback, ensure_ascii=False)
+        )
+        return Response({'success': True, 'feedback': feedback, 'cached': False})
 
     @action(detail=True, methods=['post'])
     def save_answer(self, request, pk=None):

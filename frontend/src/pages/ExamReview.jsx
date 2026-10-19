@@ -1,12 +1,35 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import api from '../api/axios';
-import { ChevronLeft, CheckCircle2, XCircle, AlertCircle, Clock, Award } from 'lucide-react';
+import { ChevronLeft, CheckCircle2, XCircle, AlertCircle, Clock, Award, Sparkles, Lightbulb, TrendingUp, Heart } from 'lucide-react';
 
 const ExamReview = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+
+  const [aiFeedback, setAiFeedback] = useState(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState(null);
+
+  const requestAIFeedback = async () => {
+    if (!id) return;
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      const res = await api.post(`/student-exams/${id}/ai_feedback/`);
+      if (res.data.success) {
+        setAiFeedback(res.data.feedback);
+      } else {
+        setAiError(res.data.error || 'Không lấy được phản hồi AI.');
+      }
+    } catch (err) {
+      const msg = err.response?.data?.error || err.message || 'Lỗi kết nối.';
+      setAiError(msg);
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   const { data: examData, isLoading, error } = useQuery({
     queryKey: ['exam-review', id],
@@ -105,6 +128,103 @@ const ExamReview = () => {
             <p className="text-xl font-black text-blue-600">{Math.floor(time_spent / 60)}p {time_spent % 60}s</p>
           </div>
         </div>
+      </div>
+
+      {/* AI Feedback Section */}
+      <div className="glass-card p-6 border-violet-500/30 bg-gradient-to-br from-violet-50/60 to-indigo-50/40 dark:from-violet-950/20 dark:to-indigo-950/20">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-violet-500/20 text-violet-600 flex items-center justify-center">
+              <Sparkles className="w-6 h-6" />
+            </div>
+            <div>
+              <h2 className="text-lg font-black text-slate-900 dark:text-white">Cố Vấn AI Phân Tích Bài Làm</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">AI đọc lối sai của riêng em và gợi ý cách ôn lại phù hợp nhất</p>
+            </div>
+          </div>
+          {!aiFeedback && (
+            <button onClick={requestAIFeedback} disabled={aiLoading} className="btn-primary !bg-gradient-to-r !from-violet-600 !to-indigo-600 !border-0 whitespace-nowrap">
+              {aiLoading ? (
+                <span className="flex items-center gap-2">
+                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  AI đang phân tích... (15-40 giây)
+                </span>
+              ) : (
+                <span className="flex items-center gap-2"><Sparkles className="w-5 h-5" /> Nhận Phản Hồi AI</span>
+              )}
+            </button>
+          )}
+        </div>
+
+        {aiError && (
+          <div className="mt-4 p-3 rounded-xl text-sm bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 flex items-center gap-2">
+            <AlertCircle className="w-5 h-5 shrink-0" />
+            <span>{aiError}</span>
+          </div>
+        )}
+
+        {aiFeedback && (
+          <div className="mt-5 space-y-5">
+            <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300 border-l-4 border-violet-500 pl-4 italic">
+              {aiFeedback.summary}
+            </p>
+
+            {aiFeedback.strengths?.length > 0 && (
+              <div>
+                <h3 className="flex items-center gap-2 text-sm font-bold text-emerald-700 dark:text-emerald-400 mb-2">
+                  <TrendingUp className="w-4 h-4" /> Điểm mạnh của em
+                </h3>
+                <ul className="space-y-1.5">
+                  {aiFeedback.strengths.map((s, i) => (
+                    <li key={i} className="text-sm text-slate-700 dark:text-slate-300 flex items-start gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                      <span>{s}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {aiFeedback.weak_topics?.length > 0 && (
+              <div>
+                <h3 className="flex items-center gap-2 text-sm font-bold text-rose-700 dark:text-rose-400 mb-2">
+                  <AlertCircle className="w-4 h-4" /> Chủ điểm cần củng cố
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {aiFeedback.weak_topics.map((w, i) => (
+                    <div key={i} className="p-3 rounded-xl bg-white/70 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700">
+                      <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{w.topic}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{w.note}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {aiFeedback.advice?.length > 0 && (
+              <div>
+                <h3 className="flex items-center gap-2 text-sm font-bold text-violet-700 dark:text-violet-400 mb-2">
+                  <Lightbulb className="w-4 h-4" /> Lộ trình ôn tập dành cho em
+                </h3>
+                <ol className="space-y-2">
+                  {aiFeedback.advice.map((a, i) => (
+                    <li key={i} className="text-sm text-slate-700 dark:text-slate-300 flex items-start gap-3">
+                      <span className="shrink-0 w-6 h-6 rounded-full bg-violet-500/15 text-violet-600 font-bold text-xs flex items-center justify-center">{i + 1}</span>
+                      <span>{a}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
+
+            {aiFeedback.encouragement && (
+              <div className="flex items-start gap-3 p-4 rounded-xl bg-violet-100/70 dark:bg-violet-950/40 border border-violet-200 dark:border-violet-900">
+                <Heart className="w-5 h-5 text-violet-500 shrink-0 mt-0.5" />
+                <p className="text-sm font-semibold text-violet-800 dark:text-violet-200">{aiFeedback.encouragement}</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Questions List */}

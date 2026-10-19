@@ -158,6 +158,17 @@ class Result(models.Model):
         return f"{self.student_exam.student.full_name} - {self.score} điểm"
 
 
+class AIExamFeedback(models.Model):
+    """Phản hồi học tập do AI sinh ra cho từng bài thi của học sinh."""
+    student_exam = models.OneToOneField(StudentExam, on_delete=models.CASCADE, related_name='ai_feedback')
+    content = models.TextField(help_text="Nội dung phản hồi dạng JSON")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"AI Feedback - {self.student_exam}"
+
+
 class Announcement(models.Model):
     title = models.CharField(max_length=255, verbose_name="Tiêu đề thông báo")
     content = models.TextField(verbose_name="Nội dung thông báo")
