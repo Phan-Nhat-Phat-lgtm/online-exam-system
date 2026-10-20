@@ -649,7 +649,13 @@ class GenerateQuestionsAIView(generics.GenericAPIView):
         bank_id = request.data.get('bank_id')
         save_to_bank = bool(request.data.get('save', False))
 
-        if len(content) < 50:
+        # Chế độ chỉ-lưu (save-only) không cần content — bỏ qua bước kiểm tra nội dung
+        questions_payload = request.data.get('questions')
+        save_only = bool(
+            save_to_bank and bank_id
+            and isinstance(questions_payload, list) and questions_payload
+        )
+        if not save_only and len(content) < 50:
             return Response(
                 {'success': False, 'error': 'Vui lòng dán nội dung bài học (tối thiểu 50 ký tự).'},
                 status=status.HTTP_400_BAD_REQUEST
@@ -666,8 +672,7 @@ class GenerateQuestionsAIView(generics.GenericAPIView):
             )
 
         # Chế độ lưu trực tiếp câu hỏi đã sinh ở bước trước (không sinh lại)
-        questions_payload = request.data.get('questions')
-        if save_to_bank and bank_id and isinstance(questions_payload, list) and questions_payload:
+        if save_only:
             valid_payload = [
                 q for q in questions_payload
                 if isinstance(q, dict) and all(q.get(k) for k in
