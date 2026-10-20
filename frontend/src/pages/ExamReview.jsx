@@ -17,7 +17,7 @@ const ExamReview = () => {
     setAiLoading(true);
     setAiError(null);
     try {
-      const res = await api.post(`/student-exams/${id}/ai_feedback/`);
+      const res = await api.post(`/student-exams/${id}/ai_feedback/`, {}, { timeout: 120000 });
       if (res.data.success) {
         setAiFeedback(res.data.feedback);
       } else {

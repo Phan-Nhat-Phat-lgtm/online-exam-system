@@ -30,35 +30,58 @@ OPT_PATTERNS = {
 ANS_PATTERN = re.compile(r'^(?:Đáp án|ĐÁP ÁN|Key|Đáp án đúng|Câu trả lời)\s*[\:\=\s]*([A-D])(?:\s|$)', re.IGNORECASE)
 
 
-def call_gemini(prompt, temperature=0.7):
-    """Gọi Gemini API và trả về text kết quả."""
+# Model dự phòng khi model chính quá tải (503/429) hoặc chậm đáp ứng
+FALLBACK_MODELS = ['gemini-3.5-flash', 'gemini-3.1-flash-lite']
+
+
+def _gemini_models():
+    primary = os.environ.get('GEMINI_MODEL', GEMINI_DEFAULT_MODEL)
+    return [primary] + [m for m in FALLBACK_MODELS if m != primary]
+
+
+def _post_gemini(payload, per_model_timeout=30):
+    """Gửi yêu cầu tới Gemini, tự thử lần lượt model dự phòng khi gặp quá tải."""
     api_key = os.environ.get('GEMINI_API_KEY', '')
     if not api_key:
         raise RuntimeError('Chưa cấu hình GEMINI_API_KEY trên server.')
-    model = os.environ.get('GEMINI_MODEL', GEMINI_DEFAULT_MODEL)
 
+    errors = []
+    for model in _gemini_models():
+        url = f'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}'
+        req = urllib.request.Request(
+            url, data=payload, headers={'Content-Type': 'application/json'}, method='POST'
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=per_model_timeout) as resp:
+                return json.loads(resp.read().decode('utf-8'))
+        except urllib.error.HTTPError as e:
+            detail = e.read().decode('utf-8', errors='replace')[:200]
+            if e.code in (404, 429, 500, 502, 503, 504):
+                # Model không sẵn sàng hoặc quá tải -> thử model kế tiếp
+                errors.append(f'{model}: lỗi {e.code}')
+                continue
+            # Lỗi cấu hình key (400/401/403) -> dừng ngay
+            raise RuntimeError(f'Gemini API lỗi {e.code}: {detail}')
+        except (urllib.error.URLError, TimeoutError, OSError) as e:
+            errors.append(f'{model}: {type(e).__name__}')
+            continue
+    raise RuntimeError(
+        'AI đang bận/quá tải, đã thử cả model dự phòng ('
+        + '; '.join(errors) + '). Vui lòng thử lại sau ít phút.'
+    )
+
+
+def call_gemini(prompt, temperature=0.7):
+    """Gọi Gemini API và trả về text kết quả."""
     payload = json.dumps({
         'contents': [{'parts': [{'text': prompt}]}],
         'generationConfig': {'temperature': temperature},
     }).encode('utf-8')
-
-    url = f'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}'
-    req = urllib.request.Request(
-        url, data=payload, headers={'Content-Type': 'application/json'}, method='POST'
-    )
+    data = _post_gemini(payload)
     try:
-        with urllib.request.urlopen(req, timeout=90) as resp:
-            data = json.loads(resp.read().decode('utf-8'))
-    except urllib.error.HTTPError as e:
-        detail = e.read().decode('utf-8', errors='replace')[:300]
-        raise RuntimeError(f'Gemini API lỗi {e.code}: {detail}')
-
-    text = ''
-    try:
-        text = data['candidates'][0]['content']['parts'][0]['text']
+        return data['candidates'][0]['content']['parts'][0]['text']
     except (KeyError, IndexError):
         raise RuntimeError('Gemini không trả về nội dung hợp lệ.')
-    return text
 
 
 def parse_questions_from_text(text):
@@ -151,11 +174,6 @@ def save_ai_questions(questions, bank_id):
 
 def _call_gemini_json(prompt):
     """Gọi Gemini và yêu cầu kết quả JSON, trả về dict."""
-    api_key = os.environ.get('GEMINI_API_KEY', '')
-    if not api_key:
-        raise RuntimeError('Chưa cấu hình GEMINI_API_KEY trên server.')
-    model = os.environ.get('GEMINI_MODEL', GEMINI_DEFAULT_MODEL)
-
     payload = json.dumps({
         'contents': [{'parts': [{'text': prompt}]}],
         'generationConfig': {
@@ -163,18 +181,7 @@ def _call_gemini_json(prompt):
             'responseMimeType': 'application/json',
         },
     }).encode('utf-8')
-
-    url = f'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}'
-    req = urllib.request.Request(
-        url, data=payload, headers={'Content-Type': 'application/json'}, method='POST'
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=90) as resp:
-            data = json.loads(resp.read().decode('utf-8'))
-    except urllib.error.HTTPError as e:
-        detail = e.read().decode('utf-8', errors='replace')[:300]
-        raise RuntimeError(f'Gemini API lỗi {e.code}: {detail}')
-
+    data = _post_gemini(payload)
     try:
         text = data['candidates'][0]['content']['parts'][0]['text']
         return json.loads(text)
